@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tickets_booking/providers/auth_provider.dart';
 import 'package:tickets_booking/providers/event_provider.dart';
+import 'package:tickets_booking/providers/wishlist_provider.dart';
 import 'package:tickets_booking/screens/main_screen.dart';
 
 Future<void> main() async {
@@ -20,6 +21,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => EventsProvider()),
+        ChangeNotifierProvider(create: (context) => WishlistProvider(context.read<AuthProvider>())),
       ],
       child: MaterialApp(
         title: 'Ticket Booking App',

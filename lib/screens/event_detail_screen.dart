@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tickets_booking/providers/auth_provider.dart';
+import 'package:tickets_booking/providers/wishlist_provider.dart';
 import 'package:tickets_booking/services/booking_service.dart';
 import '../services/ticketmaster_service.dart';
 
@@ -38,6 +39,18 @@ class EventDetailScreen extends StatelessWidget {
                       _bookTickets(context, event);
                     },
                     child: const Text("Забронювати квитки"),
+                  ),
+                  Consumer<WishlistProvider>(
+                    builder: (context, wishlistProvider, child) {
+                      final isWishlisted = wishlistProvider.isInWishlist(event.id);
+                      return ElevatedButton.icon(
+                        onPressed: () {
+                          wishlistProvider.toggleWishlist(event.id);
+                        },
+                        icon: Icon(isWishlisted ? Icons.favorite : Icons.favorite_border),
+                        label: Text(isWishlisted ? 'У бажаному' : 'Додати в бажане'),
+                      );
+                    },
                   ),
                 ],
               ),

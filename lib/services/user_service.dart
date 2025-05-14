@@ -17,4 +17,22 @@ class UserService {
   Future<DocumentSnapshot> getUser(String uid) async {
     return usersCollection.doc(uid).get();
   }
+
+  Future<void> addToWishlist(String userId, String eventId) async {
+    await usersCollection.doc(userId).update({
+      'wishlist': FieldValue.arrayUnion([eventId]),
+    });
+  }
+
+  Future<void> removeFromWishlist(String userId, String eventId) async {
+    await usersCollection.doc(userId).update({
+      'wishlist': FieldValue.arrayRemove([eventId]),
+    });
+  }
+
+  Future<List<String>> getWishlist(String userId) async {
+    final snapshot = await usersCollection.doc(userId).get();
+    final wishlist = snapshot['wishlist'] as List<dynamic>;
+    return wishlist.cast<String>();
+  }
 }

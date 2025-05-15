@@ -5,8 +5,29 @@ import 'package:tickets_booking/services/user_service.dart';
 class WishlistProvider extends ChangeNotifier {
   final UserService _userService = UserService();
   final AuthProvider _authProvider;
+  late final VoidCallback _authListener;
 
-  WishlistProvider(this._authProvider);
+  WishlistProvider(this._authProvider) {
+    _authListener = () {
+      if (_authProvider.user != null) {
+        loadWishlist();
+      } else {
+        _wishlist = [];
+        notifyListeners();
+      }
+    };
+
+    _authProvider.addListener(_authListener);
+    if (_authProvider.user != null) {
+      loadWishlist();
+    }
+  }
+
+  @override
+  void dispose() {
+    _authProvider.removeListener(_authListener);
+    super.dispose();
+  }
 
   List<String> _wishlist = [];
 

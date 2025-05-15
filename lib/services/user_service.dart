@@ -5,13 +5,24 @@ class UserService {
   final CollectionReference usersCollection = FirebaseFirestore.instance.collection('users');
 
   Future<void> createOrUpdateUser(User user) async {
-    return usersCollection.doc(user.uid).set({
-      'name': user.displayName,
-      'email': user.email,
-      'photoUrl': user.photoURL,
-      'wishlist': [],
-      'createdAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    final docRef = usersCollection.doc(user.uid);
+    final snapshot = await docRef.get();
+
+    if (!snapshot.exists) {
+      await docRef.set({
+        'name': user.displayName,
+        'email': user.email,
+        'photoUrl': user.photoURL,
+        'wishlist': <String>[],
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } else {
+      await docRef.set({
+        'name': user.displayName,
+        'email': user.email,
+        'photoUrl': user.photoURL,
+      }, SetOptions(merge: true));
+    }
   }
 
   Future<DocumentSnapshot> getUser(String uid) async {

@@ -83,17 +83,17 @@ class HomeScreenState extends State<HomeScreen> {
                   (_heroGroups == null)
                       ? const SkeletonCarousel()
                       : HeroCarousel(
-                          groups: topHero,
-                          pageController: _pageController,
-                          indicator: SmoothPageIndicator(
-                            controller: _pageController,
-                            count: topHero.length,
-                            effect: WormEffect(
-                              dotColor: theme.colorScheme.onSurface.withOpacity(0.3),
-                              activeDotColor: theme.colorScheme.primary,
-                            ),
+                        groups: topHero,
+                        pageController: _pageController,
+                        indicator: SmoothPageIndicator(
+                          controller: _pageController,
+                          count: topHero.length,
+                          effect: WormEffect(
+                            dotColor: theme.colorScheme.onSurface.withOpacity(0.3),
+                            activeDotColor: theme.colorScheme.primary,
                           ),
                         ),
+                      ),
             ),
             pinned: true,
           ),

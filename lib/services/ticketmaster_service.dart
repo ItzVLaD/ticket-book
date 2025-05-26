@@ -43,19 +43,22 @@ class TicketmasterService {
       // choose primary image by longest URL as proxy for resolution
       String? primaryImage;
       for (var e in list) {
-        if (e.imageUrl != null && (primaryImage == null || e.imageUrl!.length > primaryImage.length)) {
+        if (e.imageUrl != null &&
+            (primaryImage == null || e.imageUrl!.length > primaryImage.length)) {
           primaryImage = e.imageUrl;
         }
       }
       final name = list.first.seriesName ?? list.first.name;
-      groups.add(EventGroup(
-        id: key,
-        name: name,
-        primaryImageUrl: primaryImage,
-        firstDate: firstDate,
-        lastDate: lastDate,
-        schedules: list,
-      ));
+      groups.add(
+        EventGroup(
+          id: key,
+          name: name,
+          primaryImageUrl: primaryImage,
+          firstDate: firstDate,
+          lastDate: lastDate,
+          schedules: list,
+        ),
+      );
     });
     // sort groups by firstDate
     groups.sort((a, b) => a.firstDate.compareTo(b.firstDate));

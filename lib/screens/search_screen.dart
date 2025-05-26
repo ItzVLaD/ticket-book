@@ -30,6 +30,7 @@ class SearchController extends ChangeNotifier {
   bool hasMore = true;
   int _page = 0;
   Timer? _debounce;
+  bool _disposed = false;
 
   SearchController() {
     queryController.addListener(_onQueryChanged);
@@ -39,6 +40,7 @@ class SearchController extends ChangeNotifier {
   void _onQueryChanged() {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
+      if (_disposed) return;
       _page = 0;
       results.clear();
       hasMore = true;
@@ -47,16 +49,17 @@ class SearchController extends ChangeNotifier {
   }
 
   Future<void> _search() async {
-    if (!hasMore) return;
+    if (_disposed || !hasMore) return;
     isLoading = true;
     hasError = false;
     notifyListeners();
+
     try {
       final pageKey = _page + 1;
-      // TODO: pass filters in real request
       final pageResults = await _service.fetchEvents(
         keyword: queryController.text,
       );
+      if (_disposed) return;
       if (pageResults.isEmpty) {
         hasMore = false;
       } else {
@@ -64,8 +67,9 @@ class SearchController extends ChangeNotifier {
         _page = pageKey;
       }
     } catch (e) {
-      hasError = true;
+      if (!_disposed) hasError = true;
     } finally {
+      if (_disposed) return;
       isLoading = false;
       notifyListeners();
     }
@@ -89,6 +93,7 @@ class SearchController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _debounce?.cancel();
     queryController.removeListener(_onQueryChanged);
     queryController.dispose();

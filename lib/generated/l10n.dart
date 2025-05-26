@@ -26,4 +26,13 @@ class S {
   String get cancel => 'Cancel';
   String get confirm => 'Confirm';
   String bookingSuccess(String name) => 'Successfully booked tickets for $name';
+  String get yourBookings => 'Your bookings';
+  String get theme => 'Theme';
+  String get logout => 'Log out';
+  String get wishlist => 'Wishlist';
+  String get noBookings => 'No bookings yet';
+  String get cancelBooking => 'Cancel booking?';
+  String get confirmCancel => 'Are you sure you want to cancel?';
+  String get no => 'No';
+  String get yes => 'Yes';
 }

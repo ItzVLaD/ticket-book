@@ -16,4 +16,14 @@ class S {
   String get radius => 'Radius';
   String get any => 'Any';
   String get apply => 'Apply';
+  String get shareFeatureComingSoon => 'Share feature coming soon';
+  String get ticketsLeft => 'tickets left';
+  String get showLess => 'Show less';
+  String get showMore => 'Show more';
+  String get similarEvents => 'Similar events';
+  String get bookTickets => 'Book tickets';
+  String get selectQuantity => 'Select quantity';
+  String get cancel => 'Cancel';
+  String get confirm => 'Confirm';
+  String bookingSuccess(String name) => 'Successfully booked tickets for $name';
 }

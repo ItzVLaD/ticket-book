@@ -25,19 +25,22 @@ class EventCard extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: event.imageUrl != null
-                    ? Image.network(
-                        event.imageUrl!,
-                        width: 100,
-                        height: 80,
-                        fit: BoxFit.cover,
-                      )
-                    : Container(
-                        width: 100,
-                        height: 80,
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        child: Icon(Icons.event, color: theme.colorScheme.onSurfaceVariant),
-                      ),
+                child: Hero(
+                  tag: 'event_${event.id}',
+                  child: event.imageUrl != null
+                      ? Image.network(
+                          event.imageUrl!,
+                          width: 100,
+                          height: 80,
+                          fit: BoxFit.cover,
+                        )
+                      : Container(
+                          width: 100,
+                          height: 80,
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          child: Icon(Icons.event, color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(

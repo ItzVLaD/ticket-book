@@ -7,6 +7,8 @@ class Event {
   final String? imageUrl;
   final String? venue;
   final DateTime? date;
+  final String? seatMapUrl;
+  final int totalTickets;
 
   Event({
     required this.id,
@@ -15,6 +17,8 @@ class Event {
     this.imageUrl,
     this.venue,
     this.date,
+    this.seatMapUrl,
+    this.totalTickets = 100,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -26,6 +30,8 @@ class Event {
     if (dateString != null) {
       parsedDate = DateTime.tryParse(dateString);
     }
+    final seatMap = (json['seatmap']?['static']?['url']) as String?;
+
     return Event(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -33,6 +39,8 @@ class Event {
       imageUrl: imageUrl,
       venue: venues.isNotEmpty ? venues[0]['name'] as String? : null,
       date: parsedDate,
+      seatMapUrl: seatMap,
+      totalTickets: 100,
     );
   }
 

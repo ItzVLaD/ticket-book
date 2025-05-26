@@ -86,6 +86,14 @@ class SearchController extends ChangeNotifier {
     hasMore = true;
     _search();
   }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    queryController.removeListener(_onQueryChanged);
+    queryController.dispose();
+    super.dispose();
+  }
 }
 
 class _SearchView extends StatelessWidget {

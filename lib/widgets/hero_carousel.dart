@@ -31,14 +31,15 @@ class HeroCarousel extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   event.imageUrl != null
-                      ? Image.network(
-                          event.imageUrl!,
-                          fit: BoxFit.cover,
-                        )
+                      ? Image.network(event.imageUrl!, fit: BoxFit.cover)
                       : Container(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          child: Icon(Icons.event, color: theme.colorScheme.onSurfaceVariant, size: 48),
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        child: Icon(
+                          Icons.event,
+                          color: theme.colorScheme.onSurfaceVariant,
+                          size: 48,
                         ),
+                      ),
                   BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                     child: Container(color: Colors.black),
@@ -64,20 +65,18 @@ class HeroCarousel extends StatelessWidget {
                       children: [
                         Text(
                           event.name,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(color: Theme.of(context).colorScheme.onSurface),
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         Text(
                           event.dateFormatted,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: Theme.of(context).colorScheme.onSurface),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                         ),
                       ],
                     ),
@@ -87,10 +86,7 @@ class HeroCarousel extends StatelessWidget {
             );
           },
         ),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: indicator,
-        ),
+        Padding(padding: const EdgeInsets.only(bottom: 8), child: indicator),
       ],
     );
   }

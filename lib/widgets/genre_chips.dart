@@ -19,24 +19,26 @@ class GenreChips extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
-        children: genres.map((genre) {
-          final isSelected = selected == genre;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: Text(genre, style: theme.textTheme.bodyMedium),
-              selected: isSelected,
-              onSelected: (_) => onSelected(genre),
-              selectedColor: theme.colorScheme.primary,
-              backgroundColor: theme.colorScheme.surfaceContainerHighest,
-              labelStyle: TextStyle(
-                color: isSelected
-                    ? theme.colorScheme.onPrimary
-                    : theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          );
-        }).toList(),
+        children:
+            genres.map((genre) {
+              final isSelected = selected == genre;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text(genre, style: theme.textTheme.bodyMedium),
+                  selected: isSelected,
+                  onSelected: (_) => onSelected(genre),
+                  selectedColor: theme.colorScheme.primary,
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                  labelStyle: TextStyle(
+                    color:
+                        isSelected
+                            ? theme.colorScheme.onPrimary
+                            : theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              );
+            }).toList(),
       ),
     );
   }

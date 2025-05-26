@@ -13,10 +13,7 @@ class SearchScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => SearchController(),
-      child: const _SearchView(),
-    );
+    return ChangeNotifierProvider(create: (_) => SearchController(), child: const _SearchView());
   }
 }
 
@@ -56,9 +53,7 @@ class SearchController extends ChangeNotifier {
 
     try {
       final pageKey = _page + 1;
-      final pageResults = await _service.fetchEvents(
-        keyword: queryController.text,
-      );
+      final pageResults = await _service.fetchEvents(keyword: queryController.text);
       if (_disposed) return;
       if (pageResults.isEmpty) {
         hasMore = false;
@@ -132,9 +127,9 @@ class _SearchView extends StatelessWidget {
         onRefresh: ctrl.refresh,
         child: NotificationListener<ScrollNotification>(
           onNotification: (notif) {
-            if (notif.metrics.pixels >=
-                    notif.metrics.maxScrollExtent - 200 &&
-                !ctrl.isLoading && ctrl.hasMore) {
+            if (notif.metrics.pixels >= notif.metrics.maxScrollExtent - 200 &&
+                !ctrl.isLoading &&
+                ctrl.hasMore) {
               ctrl._search(); // ignore: invalid_use_of_protected_member
             }
             return false;
@@ -142,21 +137,13 @@ class _SearchView extends StatelessWidget {
           child: CustomScrollView(
             slivers: [
               SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    if (index < ctrl.results.length) {
-                      return EventCard(
-                        event: ctrl.results[index],
-                        onTap: () {},
-                      );
-                    }
-                    // loader at bottom
-                    return ctrl.isLoading
-                        ? const SkeletonEventCard()
-                        : const SizedBox.shrink();
-                  },
-                  childCount: ctrl.results.length + (ctrl.hasMore ? 1 : 0),
-                ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  if (index < ctrl.results.length) {
+                    return EventCard(event: ctrl.results[index], onTap: () {});
+                  }
+                  // loader at bottom
+                  return ctrl.isLoading ? const SkeletonEventCard() : const SizedBox.shrink();
+                }, childCount: ctrl.results.length + (ctrl.hasMore ? 1 : 0)),
               ),
               if (!ctrl.isLoading && ctrl.results.isEmpty)
                 SliverFillRemaining(
@@ -166,18 +153,13 @@ class _SearchView extends StatelessWidget {
                       children: [
                         Icon(Icons.search_off, size: 64, color: theme.colorScheme.onSurfaceVariant),
                         const SizedBox(height: 16),
-                        Text(S.of(context).noResultsFound,
-                            style: theme.textTheme.bodyLarge),
+                        Text(S.of(context).noResultsFound, style: theme.textTheme.bodyLarge),
                       ],
                     ),
                   ),
                 ),
               if (ctrl.hasError)
-                SliverFillRemaining(
-                  child: Center(
-                    child: Text(S.of(context).errorLoadingEvents),
-                  ),
-                ),
+                SliverFillRemaining(child: Center(child: Text(S.of(context).errorLoadingEvents))),
             ],
           ),
         ),
@@ -187,10 +169,11 @@ class _SearchView extends StatelessWidget {
           final newFilters = await showModalBottomSheet<SearchFilters>(
             context: context,
             isScrollControlled: true,
-            builder: (_) => FractionallySizedBox(
-              heightFactor: 0.8,
-              child: _FilterSheet(initial: ctrl.filters),
-            ),
+            builder:
+                (_) => FractionallySizedBox(
+                  heightFactor: 0.8,
+                  child: _FilterSheet(initial: ctrl.filters),
+                ),
           );
           if (newFilters != null) ctrl.updateFilters(newFilters);
         },
@@ -255,9 +238,11 @@ class _FilterSheetState extends State<_FilterSheet> {
                       );
                       if (range != null) setState(() => _dateRange = range);
                     },
-                    child: Text(_dateRange != null
-                        ? '${S.of(context).from} ${_dateRange!.start.toLocal()} to ${_dateRange!.end.toLocal()}'
-                        : S.of(context).selectDate),
+                    child: Text(
+                      _dateRange != null
+                          ? '${S.of(context).from} ${_dateRange!.start.toLocal()} to ${_dateRange!.end.toLocal()}'
+                          : S.of(context).selectDate,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Text(S.of(context).priceRange),
@@ -276,25 +261,30 @@ class _FilterSheetState extends State<_FilterSheet> {
                   Text(S.of(context).genres),
                   Wrap(
                     spacing: 8,
-                    children: _allGenres.map((g) {
-                      final sel = _genres.contains(g);
-                      return ChoiceChip(
-                        label: Text(g),
-                        selected: sel,
-                        onSelected: (_) => setState(() => sel ? _genres.remove(g) : _genres.add(g)),
-                      );
-                    }).toList(),
+                    children:
+                        _allGenres.map((g) {
+                          final sel = _genres.contains(g);
+                          return ChoiceChip(
+                            label: Text(g),
+                            selected: sel,
+                            onSelected:
+                                (_) => setState(() => sel ? _genres.remove(g) : _genres.add(g)),
+                          );
+                        }).toList(),
                   ),
                   const SizedBox(height: 16),
                   Text(S.of(context).radius),
                   DropdownButton<int?>(
                     value: _radius,
-                    items: _radiusOptions
-                        .map((r) => DropdownMenuItem(
-                              value: r,
-                              child: Text(r == null ? S.of(context).any : '$r km'),
-                            ))
-                        .toList(),
+                    items:
+                        _radiusOptions
+                            .map(
+                              (r) => DropdownMenuItem(
+                                value: r,
+                                child: Text(r == null ? S.of(context).any : '$r km'),
+                              ),
+                            )
+                            .toList(),
                     onChanged: (v) => setState(() => _radius = v),
                   ),
                 ],

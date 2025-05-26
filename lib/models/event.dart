@@ -25,7 +25,7 @@ class Event {
     final images = (json['images'] as List?) ?? [];
     final imageUrl = images.isNotEmpty ? images[0]['url'] as String? : null;
     final venues = (json['_embedded']?['venues'] as List?) ?? [];
-    final dateString = (json['dates']?['start']?['localDate'] as String?) ;
+    final dateString = (json['dates']?['start']?['localDate'] as String?);
     DateTime? parsedDate;
     if (dateString != null) {
       parsedDate = DateTime.tryParse(dateString);

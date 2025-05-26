@@ -37,12 +37,12 @@ class ProfileScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundImage: NetworkImage(user.photoURL ?? ''),
-                  ),
+                  CircleAvatar(radius: 40, backgroundImage: NetworkImage(user.photoURL ?? '')),
                   const SizedBox(height: 8),
-                  Text(user.displayName ?? 'No Name', style: Theme.of(context).textTheme.titleLarge),
+                  Text(
+                    user.displayName ?? 'No Name',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                   Text(user.email ?? '', style: Theme.of(context).textTheme.bodyMedium),
                   const SizedBox(height: 16),
                 ],
@@ -55,7 +55,18 @@ class ProfileScreen extends StatelessWidget {
           sliver: SliverToBoxAdapter(
             child: Row(
               children: [
-                Expanded(child: _StatCard(label: 'Bookings', icon: Icons.book_online, stream: FirebaseFirestore.instance.collection('bookings').where('userId', isEqualTo: user.uid).snapshots(), countField: null)),
+                Expanded(
+                  child: _StatCard(
+                    label: 'Bookings',
+                    icon: Icons.book_online,
+                    stream:
+                        FirebaseFirestore.instance
+                            .collection('bookings')
+                            .where('userId', isEqualTo: user.uid)
+                            .snapshots(),
+                    countField: null,
+                  ),
+                ),
                 const SizedBox(width: 16),
                 Expanded(child: _WishlistCountCard()),
               ],
@@ -79,15 +90,23 @@ class ProfileScreen extends StatelessWidget {
                 leading: const Icon(Icons.brightness_6),
                 title: Text(S.of(context).theme),
                 trailing: Consumer<ThemeModeNotifier>(
-                  builder: (context, theme, _) => DropdownButton<ThemeMode>(
-                    value: theme.mode,
-                    items: ThemeMode.values.map((mode) => DropdownMenuItem(
-                          value: mode,
-                          child: Text(mode.name.capitalize()),
-                        )).toList(),
-                    onChanged: (mode) { if (mode != null) context.read<ThemeModeNotifier>().setMode(mode); },
-                    underline: const SizedBox.shrink(),
-                  ),
+                  builder:
+                      (context, theme, _) => DropdownButton<ThemeMode>(
+                        value: theme.mode,
+                        items:
+                            ThemeMode.values
+                                .map(
+                                  (mode) => DropdownMenuItem(
+                                    value: mode,
+                                    child: Text(mode.name.capitalize()),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: (mode) {
+                          if (mode != null) context.read<ThemeModeNotifier>().setMode(mode);
+                        },
+                        underline: const SizedBox.shrink(),
+                      ),
                 ),
               ),
               ListTile(
@@ -120,8 +139,16 @@ class _StatCard extends StatelessWidget {
           builder: (context, snap) {
             final count = snap.hasData ? snap.data!.docs.length : 0;
             return Row(
-              children: [Icon(icon, size: 32), const SizedBox(width: 8),
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('$count', style: Theme.of(context).textTheme.headlineMedium), Text(label)]),
+              children: [
+                Icon(icon, size: 32),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('$count', style: Theme.of(context).textTheme.headlineMedium),
+                    Text(label),
+                  ],
+                ),
               ],
             );
           },
@@ -137,13 +164,26 @@ class _WishlistCountCard extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Consumer<WishlistProvider>(builder: (context, wish, _) {
-          return Row(
-            children: [Icon(Icons.favorite, size: 32), const SizedBox(width: 8),
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('${wish.wishlist.length}', style: Theme.of(context).textTheme.headlineMedium), Text(S.of(context).wishlist)]),
-            ],
-          );
-        }),
+        child: Consumer<WishlistProvider>(
+          builder: (context, wish, _) {
+            return Row(
+              children: [
+                Icon(Icons.favorite, size: 32),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${wish.wishlist.length}',
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    Text(S.of(context).wishlist),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -156,11 +196,12 @@ class _BookingsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('bookings')
-          .where('userId', isEqualTo: userId)
-          .orderBy('bookedAt', descending: true)
-          .snapshots(),
+      stream:
+          FirebaseFirestore.instance
+              .collection('bookings')
+              .where('userId', isEqualTo: userId)
+              .orderBy('bookedAt', descending: true)
+              .snapshots(),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return SliverToBoxAdapter(child: const Center(child: CircularProgressIndicator()));
@@ -176,39 +217,46 @@ class _BookingsSection extends StatelessWidget {
           final key = DateFormat.yMMMM().format(date);
           groups.putIfAbsent(key, () => []).add(doc);
         }
-        final sliverChildren = groups.entries.map((entry) {
-          final month = entry.key;
-          final items = entry.value;
-          return ExpansionTile(
-            title: Text(month),
-            children: items.map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              return ListTile(
-                title: Text(data['eventName'] ?? ''),
-                subtitle: Text('${data['ticketsCount']} × ${data['eventDate']}'),
-                onLongPress: () async {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: Text(S.of(context).cancelBooking),
-                      content: Text(S.of(context).confirmCancel),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(context, false), child: Text(S.of(context).no)),
-                        TextButton(onPressed: () => Navigator.pop(context, true), child: Text(S.of(context).yes)),
-                      ],
-                    ),
-                  );
-                  if (confirm == true) {
-                    await doc.reference.delete();
-                  }
-                },
+        final sliverChildren =
+            groups.entries.map((entry) {
+              final month = entry.key;
+              final items = entry.value;
+              return ExpansionTile(
+                title: Text(month),
+                children:
+                    items.map((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      return ListTile(
+                        title: Text(data['eventName'] ?? ''),
+                        subtitle: Text('${data['ticketsCount']} × ${data['eventDate']}'),
+                        onLongPress: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder:
+                                (_) => AlertDialog(
+                                  title: Text(S.of(context).cancelBooking),
+                                  content: Text(S.of(context).confirmCancel),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: Text(S.of(context).no),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, true),
+                                      child: Text(S.of(context).yes),
+                                    ),
+                                  ],
+                                ),
+                          );
+                          if (confirm == true) {
+                            await doc.reference.delete();
+                          }
+                        },
+                      );
+                    }).toList(),
               );
-            }).toList(),
-          );
-        }).toList();
-        return SliverList(
-          delegate: SliverChildListDelegate(sliverChildren),
-        );
+            }).toList();
+        return SliverList(delegate: SliverChildListDelegate(sliverChildren));
       },
     );
   }

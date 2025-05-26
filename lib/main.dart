@@ -26,13 +26,14 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ThemeModeNotifier()),
       ],
       child: Builder(
-        builder: (context) => MaterialApp(
-          title: 'Ticket Booking App',
-          theme: ThemeData(useMaterial3: true, primarySwatch: Colors.blue),
-          darkTheme: ThemeData(useMaterial3: true, brightness: Brightness.dark),
-          themeMode: context.watch<ThemeModeNotifier>().mode,
-          home: const AuthWrapper(),
-        ),
+        builder:
+            (context) => MaterialApp(
+              title: 'Ticket Booking App',
+              theme: ThemeData(useMaterial3: true, primarySwatch: Colors.blue),
+              darkTheme: ThemeData(useMaterial3: true, brightness: Brightness.dark),
+              themeMode: context.watch<ThemeModeNotifier>().mode,
+              home: const AuthWrapper(),
+            ),
       ),
     );
   }

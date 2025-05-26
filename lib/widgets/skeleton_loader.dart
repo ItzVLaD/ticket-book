@@ -9,9 +9,7 @@ class SkeletonCarousel extends StatelessWidget {
       height: 200,
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       alignment: Alignment.center,
-      child: CircularProgressIndicator(
-        color: Theme.of(context).colorScheme.primary,
-      ),
+      child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary),
     );
   }
 }
@@ -41,10 +39,7 @@ class SkeletonEventCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    height: 16,
-                    color: theme.colorScheme.surfaceContainerHighest,
-                  ),
+                  Container(height: 16, color: theme.colorScheme.surfaceContainerHighest),
                   const SizedBox(height: 8),
                   Container(
                     height: 14,

@@ -5,11 +5,7 @@ class EventCard extends StatelessWidget {
   final Event event;
   final VoidCallback onTap;
 
-  const EventCard({
-    super.key,
-    required this.event,
-    required this.onTap,
-  });
+  const EventCard({super.key, required this.event, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -27,19 +23,20 @@ class EventCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 child: Hero(
                   tag: 'event_${event.id}',
-                  child: event.imageUrl != null
-                      ? Image.network(
-                          event.imageUrl!,
-                          width: 100,
-                          height: 80,
-                          fit: BoxFit.cover,
-                        )
-                      : Container(
-                          width: 100,
-                          height: 80,
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          child: Icon(Icons.event, color: theme.colorScheme.onSurfaceVariant),
-                        ),
+                  child:
+                      event.imageUrl != null
+                          ? Image.network(
+                            event.imageUrl!,
+                            width: 100,
+                            height: 80,
+                            fit: BoxFit.cover,
+                          )
+                          : Container(
+                            width: 100,
+                            height: 80,
+                            color: theme.colorScheme.surfaceContainerHighest,
+                            child: Icon(Icons.event, color: theme.colorScheme.onSurfaceVariant),
+                          ),
                 ),
               ),
               const SizedBox(width: 12),

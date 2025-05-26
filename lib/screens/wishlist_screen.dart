@@ -13,7 +13,6 @@ class WishlistScreen extends StatefulWidget {
 }
 
 class WishlistScreenState extends State<WishlistScreen> {
-  final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
   late List<Event> _items;
   bool _loading = true;
 
@@ -34,10 +33,6 @@ class WishlistScreenState extends State<WishlistScreen> {
     final all = eventsProvider.events;
     _items = all.where((e) => ids.contains(e.id)).toList();
     setState(() => _loading = false);
-    // populate AnimatedList
-    for (var i = 0; i < _items.length; i++) {
-      _listKey.currentState?.insertItem(i);
-    }
   }
 
   Future<void> _refresh() async {
@@ -49,32 +44,17 @@ class WishlistScreenState extends State<WishlistScreen> {
     setState(() {
       _items = all.where((e) => ids.contains(e.id)).toList();
     });
-    // animate new items
-    for (var i = 0; i < _items.length; i++) {
-      _listKey.currentState?.insertItem(i);
-    }
   }
 
   void _removeItem(int index) {
     final removed = _items.removeAt(index);
-    _listKey.currentState?.removeItem(
-      index,
-      (context, animation) => SizeTransition(
-        sizeFactor: animation,
-        child: _buildItem(removed, index),
-      ),
-      duration: const Duration(milliseconds: 300),
-    );
     context.read<WishlistProvider>().toggleWishlist(removed.id);
   }
 
   Widget _buildItem(Event event, int index) {
     return GestureDetector(
       onLongPress: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => EventDetailScreen(event: event)),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailScreen(event: event)));
       },
       child: Card(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -89,9 +69,13 @@ class WishlistScreenState extends State<WishlistScreen> {
             child: const Icon(Icons.delete, color: Colors.white),
           ),
           child: ListTile(
-            leading: event.imageUrl != null
-                ? Image.network(event.imageUrl!, width: 60, fit: BoxFit.cover)
-                : Container(width: 60, color: Theme.of(context).colorScheme.surfaceContainerHighest),
+            leading:
+                event.imageUrl != null
+                    ? Image.network(event.imageUrl!, width: 60, fit: BoxFit.cover)
+                    : Container(
+                      width: 60,
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    ),
             title: Text(event.name),
             subtitle: Text(event.venue ?? ''),
             trailing: Text('\$${event.dateFormatted}'),
@@ -105,38 +89,35 @@ class WishlistScreenState extends State<WishlistScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Wishlist')),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
+      body:
+          _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _items.isEmpty
               ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.favorite_border_rounded,
-                          size: 80,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withAlpha(50)),
-                      const SizedBox(height: 16),
-                      Text('Your wishlist is empty',
-                          style: Theme.of(context).textTheme.bodyLarge),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _refresh,
-                  child: AnimatedList(
-                    key: _listKey,
-                    initialItemCount: _items.length,
-                    itemBuilder: (context, index, animation) {
-                      return SizeTransition(
-                        sizeFactor: animation,
-                        child: _buildItem(_items[index], index),
-                      );
-                    },
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.favorite_border_rounded,
+                      size: 80,
+                      color: Theme.of(context).colorScheme.onSurface.withAlpha(50),
+                    ),
+                    const SizedBox(height: 16),
+                    Text('Your wishlist is empty', style: Theme.of(context).textTheme.bodyLarge),
+                  ],
                 ),
+              )
+              : RefreshIndicator(
+                onRefresh: _refresh,
+                child: ListView.builder(
+                  padding: EdgeInsets.zero,
+                  itemCount: _items.length,
+                  itemBuilder: (context, index) {
+                    final event = _items[index];
+                    return _buildItem(event, index);
+                  },
+                ),
+              ),
     );
   }
 }

@@ -9,6 +9,9 @@ class Event {
   final DateTime? date;
   final String? seatMapUrl;
   final int totalTickets;
+  final String? seriesId;
+  final String? seriesName;
+  final String? firstAttractionId;
 
   Event({
     required this.id,
@@ -19,6 +22,9 @@ class Event {
     this.date,
     this.seatMapUrl,
     this.totalTickets = 100,
+    this.seriesId,
+    this.seriesName,
+    this.firstAttractionId,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -31,6 +37,11 @@ class Event {
       parsedDate = DateTime.tryParse(dateString);
     }
     final seatMap = (json['seatmap']?['static']?['url']) as String?;
+    final series = json['series'] as Map<String, dynamic>?;
+    final seriesId = series?['id'] as String?;
+    final seriesName = series?['name'] as String?;
+    final attractions = (json['_embedded']?['attractions'] as List?) ?? [];
+    final firstAttractionId = attractions.isNotEmpty ? attractions[0]['id'] as String? : null;
 
     return Event(
       id: json['id'] as String,
@@ -41,6 +52,9 @@ class Event {
       date: parsedDate,
       seatMapUrl: seatMap,
       totalTickets: 100,
+      seriesId: seriesId,
+      seriesName: seriesName,
+      firstAttractionId: firstAttractionId,
     );
   }
 

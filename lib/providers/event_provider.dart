@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:tickets_booking/models/event.dart';
+import 'package:tickets_booking/models/event_group.dart';
 import '../services/ticketmaster_service.dart';
 
 class EventsProvider extends ChangeNotifier {
   final TicketmasterService _service = TicketmasterService();
 
   List<Event> _events = [];
+  List<EventGroup> _groups = [];
+
   bool _isLoading = false;
   bool _hasError = false;
 
   List<Event> get events => _events;
+  List<EventGroup> get groupedEvents => _groups;
   bool get isLoading => _isLoading;
   bool get hasError => _hasError;
 
@@ -19,7 +23,10 @@ class EventsProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _events = await _service.fetchEvents(keyword: keyword);
+      final raw = await _service.fetchEvents(keyword: keyword);
+      _events = raw;
+      _groups = _service.groupEvents(raw);
+      _hasError = false;
     } catch (e) {
       // TODO: report error to logging/analytics
       _hasError = true;

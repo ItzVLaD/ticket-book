@@ -176,41 +176,38 @@ class _BookingsSection extends StatelessWidget {
           final key = DateFormat.yMMMM().format(date);
           groups.putIfAbsent(key, () => []).add(doc);
         }
-        return SliverAnimatedList(
-          initialItemCount: groups.length,
-          itemBuilder: (context, index, animation) {
-            final month = groups.keys.elementAt(index);
-            final items = groups[month]!;
-            return FadeTransition(
-              opacity: animation,
-              child: ExpansionTile(
-                title: Text(month),
-                children: items.map((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  return ListTile(
-                    title: Text(data['eventName'] ?? ''),
-                    subtitle: Text('${data['ticketsCount']} × ${data['eventDate']}'),
-                    onLongPress: () async {
-                      final confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: Text(S.of(context).cancelBooking),
-                          content: Text(S.of(context).confirmCancel),
-                          actions: [
-                            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(S.of(context).no)),
-                            TextButton(onPressed: () => Navigator.pop(context, true), child: Text(S.of(context).yes)),
-                          ],
-                        ),
-                      );
-                      if (confirm == true) {
-                        await doc.reference.delete();
-                      }
-                    },
+        final sliverChildren = groups.entries.map((entry) {
+          final month = entry.key;
+          final items = entry.value;
+          return ExpansionTile(
+            title: Text(month),
+            children: items.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return ListTile(
+                title: Text(data['eventName'] ?? ''),
+                subtitle: Text('${data['ticketsCount']} × ${data['eventDate']}'),
+                onLongPress: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: Text(S.of(context).cancelBooking),
+                      content: Text(S.of(context).confirmCancel),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context, false), child: Text(S.of(context).no)),
+                        TextButton(onPressed: () => Navigator.pop(context, true), child: Text(S.of(context).yes)),
+                      ],
+                    ),
                   );
-                }).toList(),
-              ),
-            );
-          },
+                  if (confirm == true) {
+                    await doc.reference.delete();
+                  }
+                },
+              );
+            }).toList(),
+          );
+        }).toList();
+        return SliverList(
+          delegate: SliverChildListDelegate(sliverChildren),
         );
       },
     );

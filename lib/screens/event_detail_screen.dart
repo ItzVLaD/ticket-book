@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tickets_booking/models/event.dart';
 import 'package:tickets_booking/providers/auth_provider.dart';
 import 'package:tickets_booking/providers/wishlist_provider.dart';
 import 'package:tickets_booking/services/booking_service.dart';
-import '../services/ticketmaster_service.dart';
+import 'package:tickets_booking/generated/l10n.dart';
 
 class EventDetailScreen extends StatelessWidget {
   final Event event;
@@ -30,7 +31,11 @@ class EventDetailScreen extends StatelessWidget {
                   const SizedBox(height: 10),
                   Text(event.venue ?? 'Невідоме місце'),
                   const SizedBox(height: 10),
-                  Text(event.date ?? 'Дата не вказана'),
+                  Text(
+                    event.dateFormatted.isNotEmpty
+                        ? event.dateFormatted
+                        : S.of(context).noEventsFound,
+                  ),
                   const SizedBox(height: 20),
                   Text(event.description ?? 'Немає опису'),
                   const SizedBox(height: 20),
@@ -73,7 +78,7 @@ class EventDetailScreen extends StatelessWidget {
       eventId: event.id,
       eventName: event.name,
       ticketsCount: 1,
-      eventDate: event.date ?? 'невідомо',
+      eventDate: event.dateFormatted,
     );
 
     if (context.mounted) {

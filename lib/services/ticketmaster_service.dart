@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../api_keys.dart';
+import '../models/event.dart';
 
 class TicketmasterService {
   final String apiKey = ApiKeys.ticketMaster;
@@ -14,43 +15,10 @@ class TicketmasterService {
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      final events = data['_embedded']['events'] as List;
-      return events.map((e) => Event.fromJson(e)).toList();
+      final eventsJson = data['_embedded']['events'] as List;
+      return eventsJson.map((e) => Event.fromJson(e as Map<String, dynamic>)).toList();
     } else {
       throw Exception('Не вдалося завантажити події');
     }
-  }
-}
-
-class Event {
-  final String id;
-  final String name;
-  final String? description;
-  final String? imageUrl;
-  final String? venue;
-  final String? date;
-  final int totalTickets;
-
-  Event({
-    required this.id,
-    required this.name,
-    this.description,
-    this.imageUrl,
-    this.venue,
-    this.date,
-    this.totalTickets = 100,
-  });
-
-  factory Event.fromJson(Map<String, dynamic> json) {
-    final images = json['images'] as List;
-    final venues = json['_embedded']['venues'] as List;
-    return Event(
-      id: json['id'],
-      name: json['name'],
-      description: json['info'],
-      imageUrl: images.isNotEmpty ? images[0]['url'] : null,
-      venue: venues.isNotEmpty ? venues[0]['name'] : null,
-      date: json['dates']['start']['localDate'],
-    );
   }
 }

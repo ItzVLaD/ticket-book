@@ -19,7 +19,7 @@ class EventDetailScreen extends StatefulWidget {
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
   bool _descExpanded = false;
-  int? _localQuantity; // Make nullable to detect uninitialized state
+  int? _localQuantity;
   bool _isBookingInProgress = false;
   final BookingService _bookingService = BookingService();
 
@@ -30,15 +30,18 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final provider = context.watch<EventsProvider>();
     final auth = context.watch<AuthProvider>();
     final user = auth.user;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
+      backgroundColor: colorScheme.surface,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
             pinned: true,
-            expandedHeight: 300,
+            expandedHeight: 350,
             automaticallyImplyLeading: false,
-            actions: [],
+            backgroundColor: Colors.transparent,
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 fit: StackFit.expand,
@@ -47,43 +50,96 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     tag: 'event_${event.id}',
                     child:
                         event.imageUrl != null
-                            ? Image.network(event.imageUrl!, fit: BoxFit.cover)
-                            : Container(color: Theme.of(context).colorScheme.surface),
+                            ? Image.network(
+                              event.imageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder:
+                                  (context, error, stackTrace) => Container(
+                                    color: colorScheme.surfaceVariant,
+                                    child: Icon(
+                                      Icons.event,
+                                      size: 64,
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                            )
+                            : Container(
+                              color: colorScheme.surfaceVariant,
+                              child: Icon(
+                                Icons.event,
+                                size: 64,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
                   ),
+                  // Gradient overlay for better text readability
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withOpacity(0.3),
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.7),
+                        ],
+                        stops: const [0.0, 0.3, 1.0],
+                      ),
+                    ),
+                  ),
+                  // Navigation and action buttons
                   Positioned(
                     top: MediaQuery.of(context).padding.top + 8,
-                    left: 8,
-                    child: IconButton.filledTonal(
-                      onPressed: () => Navigator.pop(context),
-                      icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
-                      style: IconButton.styleFrom(
-                        backgroundColor: Theme.of(
-                          context,
-                        ).colorScheme.surfaceVariant.withOpacity(0.7),
+                    left: 16,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: Icon(Icons.arrow_back, color: Colors.white),
+                        style: IconButton.styleFrom(backgroundColor: Colors.transparent),
                       ),
                     ),
                   ),
                   Positioned(
                     top: MediaQuery.of(context).padding.top + 8,
-                    right: 8,
+                    right: 16,
                     child: Row(
                       children: [
-                        IconButton(
-                          icon: Icon(
-                            wishlist.isInWishlist(event.id)
-                                ? Icons.favorite
-                                : Icons.favorite_border,
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          onPressed: () => wishlist.toggleWishlist(event.id),
-                          color: Theme.of(context).colorScheme.onSurface,
+                          child: IconButton(
+                            icon: Icon(
+                              wishlist.isInWishlist(event.id)
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: wishlist.isInWishlist(event.id) ? Colors.red : Colors.white,
+                            ),
+                            onPressed: () => wishlist.toggleWishlist(event.id),
+                          ),
                         ),
-                        IconButton(
-                          icon: Icon(Icons.share, color: Theme.of(context).colorScheme.onSurface),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(S.of(context).shareFeatureComingSoon)),
-                            );
-                          },
+                        const SizedBox(width: 8),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
+                            icon: Icon(Icons.share, color: Colors.white),
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(S.of(context).shareFeatureComingSoon),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            },
+                          ),
                         ),
                       ],
                     ),
@@ -92,65 +148,182 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ),
             ),
           ),
-          SliverList(
-            delegate: SliverChildListDelegate([
-              Padding(
-                padding: const EdgeInsets.all(16.0),
+          SliverToBoxAdapter(
+            child: Container(
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(event.name, style: Theme.of(context).textTheme.headlineSmall),
-                    const SizedBox(height: 8),
-                    if (event.dateFormatted.isNotEmpty)
-                      Text(event.dateFormatted, style: Theme.of(context).textTheme.bodyMedium),
-                    const SizedBox(height: 8),
-                    if (event.venue != null)
-                      Chip(
-                        avatar: const Icon(Icons.location_on, size: 20),
-                        label: Text(event.venue!),
+                    // Event title and basic info
+                    Text(
+                      event.name,
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
                       ),
+                    ),
                     const SizedBox(height: 16),
+
+                    // Date and venue info cards
+                    Row(
+                      children: [
+                        if (event.dateFormatted.isNotEmpty) ...[
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.calendar_today,
+                                    color: colorScheme.onPrimaryContainer,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      event.dateFormatted,
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                        color: colorScheme.onPrimaryContainer,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (event.venue != null && event.dateFormatted.isNotEmpty)
+                          const SizedBox(width: 12),
+                        if (event.venue != null) ...[
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: colorScheme.secondaryContainer,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.location_on,
+                                    color: colorScheme.onSecondaryContainer,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      event.venue!,
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                        color: colorScheme.onSecondaryContainer,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
                     // Price banner
                     if (event.priceRanges?.isNotEmpty == true) ...[
-                      FilledButton.tonal(
-                        onPressed: () {},
-                        child: Text(() {
-                          final p = event.priceRanges!.first;
-                          if (p.min != null && p.max != null && p.min != p.max) {
-                            return '${p.min} – ${p.max} ${p.currency}';
-                          }
-                          final single = p.min ?? p.max;
-                          return '$single ${p.currency}';
-                        }()),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [colorScheme.primary, colorScheme.primary.withOpacity(0.8)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colorScheme.primary.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(Icons.confirmation_number, color: colorScheme.onPrimary, size: 32),
+                            const SizedBox(height: 8),
+                            Text(
+                              () {
+                                final p = event.priceRanges!.first;
+                                if (p.min != null && p.max != null && p.min != p.max) {
+                                  return '${p.min} – ${p.max} ${p.currency}';
+                                }
+                                final single = p.min ?? p.max;
+                                return '$single ${p.currency}';
+                              }(),
+                              style: theme.textTheme.headlineSmall?.copyWith(
+                                color: colorScheme.onPrimary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
                     ],
+
                     // Live availability display
                     StreamBuilder<QuerySnapshot>(
                       stream: _bookingService.getEventBookings(event.id),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
-                          return Row(
-                            children: [
-                              const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                          return Card(
+                            elevation: 0,
+                            color: colorScheme.surfaceVariant,
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: colorScheme.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'Loading availability...',
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Text('Loading availability...'),
-                            ],
+                            ),
                           );
                         }
 
                         if (snapshot.hasError || !snapshot.hasData) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [Text('100 tickets left'), const SizedBox(height: 16)],
-                          );
+                          return _buildAvailabilityCard(100, theme, colorScheme);
                         }
 
-                        // Calculate total booked tickets
                         int totalBooked = 0;
                         for (final doc in snapshot.data!.docs) {
                           final data = doc.data() as Map<String, dynamic>;
@@ -158,90 +331,231 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         }
 
                         final ticketsLeft = 100 - totalBooked;
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [Text('$ticketsLeft tickets left'), const SizedBox(height: 16)],
-                        );
+                        return _buildAvailabilityCard(ticketsLeft, theme, colorScheme);
                       },
                     ),
-                    // Description with show more/less
+                    const SizedBox(height: 24),
+
+                    // Description section
                     if (event.description?.trim().isNotEmpty == true) ...[
-                      AnimatedSize(
-                        duration: const Duration(milliseconds: 300),
-                        child: ConstrainedBox(
-                          constraints:
-                              _descExpanded
-                                  ? const BoxConstraints()
-                                  : const BoxConstraints(maxHeight: 100),
-                          child: Text(
-                            event.description ?? '',
-                            softWrap: true,
-                            overflow: TextOverflow.fade,
-                          ),
+                      Text(
+                        'About This Event',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
                         ),
                       ),
-                      TextButton(
-                        onPressed: () => setState(() => _descExpanded = !_descExpanded),
-                        child: Text(
-                          _descExpanded ? S.of(context).showLess : S.of(context).showMore,
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceVariant.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            AnimatedSize(
+                              duration: const Duration(milliseconds: 300),
+                              child: ConstrainedBox(
+                                constraints:
+                                    _descExpanded
+                                        ? const BoxConstraints()
+                                        : const BoxConstraints(maxHeight: 120),
+                                child: Text(
+                                  event.description ?? '',
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    color: colorScheme.onSurface,
+                                    height: 1.6,
+                                  ),
+                                  softWrap: true,
+                                  overflow: TextOverflow.fade,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextButton.icon(
+                              onPressed: () => setState(() => _descExpanded = !_descExpanded),
+                              icon: Icon(
+                                _descExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                              ),
+                              label: Text(
+                                _descExpanded ? S.of(context).showLess : S.of(context).showMore,
+                              ),
+                              style: TextButton.styleFrom(
+                                foregroundColor: colorScheme.primary,
+                                padding: EdgeInsets.zero,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                      const SizedBox(height: 24),
                     ],
+
+                    // Seat map
                     if (event.seatMapUrl != null) ...[
-                      const SizedBox(height: 16),
-                      Image.network(event.seatMapUrl!),
+                      Text(
+                        'Seat Map',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.network(
+                          event.seatMapUrl!,
+                          errorBuilder:
+                              (context, error, stackTrace) => Container(
+                                height: 200,
+                                color: colorScheme.surfaceVariant,
+                                child: Center(
+                                  child: Icon(
+                                    Icons.image_not_supported,
+                                    color: colorScheme.onSurfaceVariant,
+                                    size: 48,
+                                  ),
+                                ),
+                              ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
                     ],
-                    const SizedBox(height: 16),
+
+                    // Similar events section
                     Text(
                       S.of(context).similarEvents,
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
+                      ),
                     ),
+                    const SizedBox(height: 16),
                     SizedBox(
-                      height: 180,
+                      height: 220,
                       child: Builder(
                         builder: (ctx) {
                           final group = provider.groupedEvents.firstWhere(
                             (g) => g.schedules.any((e) => e.id == event.id),
                           );
                           final similar = provider.similarEventsFor(group);
-                          if (similar.isEmpty) return Center(child: Text('No similar events'));
+                          if (similar.isEmpty) {
+                            return Center(
+                              child: Container(
+                                padding: const EdgeInsets.all(32),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surfaceVariant.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.event_busy,
+                                      color: colorScheme.onSurfaceVariant,
+                                      size: 48,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'No similar events',
+                                      style: theme.textTheme.bodyLarge?.copyWith(
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
                           return ListView.builder(
                             scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
                             itemCount: similar.length,
                             itemBuilder: (_, i) {
                               final e = similar[i];
-                              return InkWell(
-                                onTap:
-                                    () => Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => EventDetailScreen(event: e),
+                              return Container(
+                                width: 160,
+                                margin: const EdgeInsets.only(right: 16),
+                                child: InkWell(
+                                  onTap:
+                                      () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => EventDetailScreen(event: e),
+                                        ),
                                       ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.surface,
+                                      borderRadius: BorderRadius.circular(16),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: colorScheme.shadow.withOpacity(0.1),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
                                     ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: SizedBox(
-                                    width: 140,
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        e.imageUrl != null
-                                            ? Image.network(
-                                              e.imageUrl!,
-                                              height: 80,
-                                              fit: BoxFit.cover,
-                                            )
-                                            : Container(
-                                              height: 80,
-                                              color: Theme.of(context).colorScheme.surface,
-                                            ),
-                                        const SizedBox(height: 8),
-                                        Text(e.name, maxLines: 2, overflow: TextOverflow.ellipsis),
-                                        const Spacer(),
-                                        Text(
-                                          e.dateFormatted,
-                                          style: Theme.of(context).textTheme.bodySmall,
+                                        ClipRRect(
+                                          borderRadius: const BorderRadius.vertical(
+                                            top: Radius.circular(16),
+                                          ),
+                                          child:
+                                              e.imageUrl != null
+                                                  ? Image.network(
+                                                    e.imageUrl!,
+                                                    height: 100,
+                                                    width: double.infinity,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder:
+                                                        (context, error, stackTrace) => Container(
+                                                          height: 100,
+                                                          color: colorScheme.surfaceVariant,
+                                                          child: Icon(
+                                                            Icons.event,
+                                                            color: colorScheme.onSurfaceVariant,
+                                                          ),
+                                                        ),
+                                                  )
+                                                  : Container(
+                                                    height: 100,
+                                                    color: colorScheme.surfaceVariant,
+                                                    child: Icon(
+                                                      Icons.event,
+                                                      color: colorScheme.onSurfaceVariant,
+                                                    ),
+                                                  ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.all(12),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                e.name,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: theme.textTheme.bodyMedium?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                  color: colorScheme.onSurface,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                e.dateFormatted,
+                                                style: theme.textTheme.bodySmall?.copyWith(
+                                                  color: colorScheme.onSurfaceVariant,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -253,11 +567,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         },
                       ),
                     ),
-                    const SizedBox(height: 100), // Space for bottom footer
+                    const SizedBox(height: 120), // Space for bottom footer
                   ],
                 ),
               ),
-            ]),
+            ),
           ),
         ],
       ),
@@ -265,8 +579,93 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     );
   }
 
+  Widget _buildAvailabilityCard(int ticketsLeft, ThemeData theme, ColorScheme colorScheme) {
+    final isLowStock = ticketsLeft <= 10;
+    final isSoldOut = ticketsLeft <= 0;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color:
+            isSoldOut
+                ? colorScheme.errorContainer
+                : isLowStock
+                ? colorScheme.tertiaryContainer
+                : colorScheme.primaryContainer.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color:
+              isSoldOut
+                  ? colorScheme.error
+                  : isLowStock
+                  ? colorScheme.tertiary
+                  : colorScheme.primary,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color:
+                  isSoldOut
+                      ? colorScheme.error
+                      : isLowStock
+                      ? colorScheme.tertiary
+                      : colorScheme.primary,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              isSoldOut
+                  ? Icons.event_busy
+                  : isLowStock
+                  ? Icons.warning
+                  : Icons.confirmation_number,
+              color:
+                  isSoldOut
+                      ? colorScheme.onError
+                      : isLowStock
+                      ? colorScheme.onTertiary
+                      : colorScheme.onPrimary,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isSoldOut ? 'Sold Out' : '$ticketsLeft tickets left',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color:
+                        isSoldOut
+                            ? colorScheme.onErrorContainer
+                            : isLowStock
+                            ? colorScheme.onTertiaryContainer
+                            : colorScheme.onSurface,
+                  ),
+                ),
+                if (isLowStock && !isSoldOut)
+                  Text(
+                    'Hurry up! Limited tickets available',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onTertiaryContainer,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBookingFooter(BuildContext context, user) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return StreamBuilder<DocumentSnapshot>(
       stream: _bookingService.getUserBooking(user.uid, widget.event.id),
@@ -300,7 +699,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             }
 
             // Calculate max allowed quantity
-            final availableToAdd = ticketsLeft + oldQty; // Include user's current booking
+            final availableToAdd = ticketsLeft + oldQty;
             final maxQuantity = availableToAdd < 10 ? availableToAdd : 10;
 
             // Determine CTA button state
@@ -329,48 +728,71 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             }
 
             return Container(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: colorScheme.surface,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                 boxShadow: [
                   BoxShadow(
-                    color: colorScheme.shadow.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, -2),
+                    color: colorScheme.shadow.withOpacity(0.15),
+                    blurRadius: 16,
+                    offset: const Offset(0, -4),
                   ),
                 ],
               ),
               child: SafeArea(
                 child: Row(
                   children: [
-                    QuantityPicker(
-                      quantity: _localQuantity!,
-                      minQuantity: hasExistingBooking ? 0 : 1,
-                      maxQuantity: maxQuantity,
-                      onDecrement:
-                          !_isBookingInProgress && _localQuantity! > (hasExistingBooking ? 0 : 1)
-                              ? () => setState(() => _localQuantity = _localQuantity! - 1)
-                              : null,
-                      onIncrement:
-                          _localQuantity! < maxQuantity && ticketsLeft > 0 && !_isBookingInProgress
-                              ? () => setState(() => _localQuantity = _localQuantity! + 1)
-                              : null,
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceVariant,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: QuantityPicker(
+                        quantity: _localQuantity!,
+                        minQuantity: hasExistingBooking ? 0 : 1,
+                        maxQuantity: maxQuantity,
+                        onDecrement:
+                            !_isBookingInProgress && _localQuantity! > (hasExistingBooking ? 0 : 1)
+                                ? () => setState(() => _localQuantity = _localQuantity! - 1)
+                                : null,
+                        onIncrement:
+                            _localQuantity! < maxQuantity &&
+                                    ticketsLeft > 0 &&
+                                    !_isBookingInProgress
+                                ? () => setState(() => _localQuantity = _localQuantity! + 1)
+                                : null,
+                      ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: ElevatedButton(
+                      child: FilledButton(
                         onPressed:
                             ctaEnabled && !_isBookingInProgress
                                 ? () => _handleBookingAction()
                                 : null,
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
                         child:
                             _isBookingInProgress
-                                ? const SizedBox(
+                                ? SizedBox(
                                   width: 20,
                                   height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: colorScheme.onPrimary,
+                                  ),
                                 )
-                                : Text(ctaLabel),
+                                : Text(
+                                  ctaLabel,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    color: colorScheme.onPrimary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                       ),
                     ),
                   ],
@@ -384,26 +806,27 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   Future<void> _handleBookingAction() async {
-    final user = context.read<AuthProvider>().user;
-    if (user == null || _localQuantity == null) return;
-
     setState(() => _isBookingInProgress = true);
-
     try {
+      final user = context.read<AuthProvider>().user!;
+
+      // Use updateBooking method which handles both new bookings and updates
       await _bookingService.updateBooking(user: user, event: widget.event, newQty: _localQuantity!);
 
       if (mounted) {
         String message;
         if (_localQuantity == 0) {
           message = 'Booking cancelled successfully';
-          // Reset quantity after successful cancellation
-          setState(() => _localQuantity = 1);
         } else {
-          message = 'Booking updated successfully';
+          message = 'Tickets booked successfully';
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message), backgroundColor: Theme.of(context).colorScheme.primary),
+          SnackBar(
+            content: Text(message),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } catch (e) {
@@ -412,6 +835,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           SnackBar(
             content: Text(e.toString().replaceFirst('Exception: ', '')),
             backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }

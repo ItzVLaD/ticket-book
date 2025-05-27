@@ -104,32 +104,93 @@ class HomeScreenState extends State<HomeScreen> {
               onSelected: _onGenreSelected,
             ),
           ),
-          provider.isLoading
-              ? SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (_, __) => const SkeletonEventCard(),
-                  childCount: 6,
-                ),
-              )
-              : provider.hasError
-              ? SliverFillRemaining(child: Center(child: Text(S.of(context).errorLoadingEvents)))
-              : SliverList(
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  final group = groups[index];
-                  final event = group.schedules.first;
-                  return EventCard(
-                    event: event,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => EventDetailScreen(event: event)),
-                      );
-                    },
-                  );
-                }, childCount: groups.length),
+          if (provider.isLoading)
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (_, __) => const SkeletonEventCard(),
+                childCount: 6,
               ),
+            )
+          else if (provider.hasError)
+            SliverFillRemaining(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.cloud_off, size: 64, color: theme.colorScheme.error),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Unable to load events',
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        provider.errorMessage,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed:
+                            () => provider.refresh(keyword: _getKeywordFromGenre(_selectedGenre)),
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Try Again'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else if (groups.isEmpty)
+            SliverFillRemaining(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.event_busy, size: 64, color: theme.colorScheme.onSurfaceVariant),
+                    const SizedBox(height: 16),
+                    Text(S.of(context).noEventsFound, style: theme.textTheme.bodyLarge),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Try selecting a different category',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            SliverList(
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final group = groups[index];
+                final event = group.schedules.first;
+                return EventCard(
+                  event: event,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => EventDetailScreen(event: event)),
+                    );
+                  },
+                );
+              }, childCount: groups.length),
+            ),
         ],
       ),
     );
+  }
+
+  String _getKeywordFromGenre(String genre) {
+    var key = genre.toLowerCase();
+    if (key.endsWith('s')) key = key.substring(0, key.length - 1);
+    return key;
   }
 }

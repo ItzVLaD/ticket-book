@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import '../api_keys.dart';
@@ -7,19 +8,75 @@ import '../models/event_group.dart';
 
 class TicketmasterService {
   final String apiKey = ApiKeys.ticketMaster;
-  final String baseUrl = 'https://app.ticketmaster.com/discovery/v2/';
+  final String baseUrl = 'https://app.ticketmaster.com/discovery/v2';
+
+  // Add timeout for better UX
+  static const Duration _timeout = Duration(seconds: 10);
 
   Future<List<Event>> fetchEvents({String keyword = 'concert'}) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/events.json?apikey=$apiKey&keyword=$keyword'),
-    );
+    try {
+      final uri = Uri.parse('$baseUrl/events.json').replace(
+        queryParameters: {
+          'apikey': apiKey,
+          'keyword': keyword,
+          'size': '20', // Limit results for better performance
+          'sort': 'date,asc',
+        },
+      );
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final eventsJson = data['_embedded']['events'] as List;
-      return eventsJson.map((e) => Event.fromJson(e as Map<String, dynamic>)).toList();
-    } else {
-      throw Exception('Не вдалося завантажити події');
+      final response = await http.get(uri).timeout(_timeout);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        // Check if events exist in response
+        final embedded = data['_embedded'];
+        if (embedded == null || embedded['events'] == null) {
+          return [];
+        }
+
+        final eventsJson = embedded['events'] as List;
+        return eventsJson.map((e) => Event.fromJson(e as Map<String, dynamic>)).toList();
+      } else if (response.statusCode == 429) {
+        throw Exception('Rate limit exceeded. Please try again later.');
+      } else {
+        throw Exception('Failed to load events: ${response.statusCode}');
+      }
+    } on SocketException {
+      throw Exception('No internet connection. Please check your network.');
+    } on HttpException {
+      throw Exception('Service temporarily unavailable.');
+    } catch (e) {
+      throw Exception('Failed to load events: ${e.toString()}');
+    }
+  }
+
+  Future<Event?> fetchEventById(String eventId) async {
+    try {
+      final uri = Uri.parse('$baseUrl/events/$eventId.json').replace(
+        queryParameters: {
+          'apikey': apiKey,
+        },
+      );
+
+      final response = await http.get(uri).timeout(_timeout);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return Event.fromJson(data as Map<String, dynamic>);
+      } else if (response.statusCode == 404) {
+        return null; // Event not found
+      } else if (response.statusCode == 429) {
+        throw Exception('Rate limit exceeded. Please try again later.');
+      } else {
+        throw Exception('Failed to load event: ${response.statusCode}');
+      }
+    } on SocketException {
+      throw Exception('No internet connection. Please check your network.');
+    } on HttpException {
+      throw Exception('Service temporarily unavailable.');
+    } catch (e) {
+      throw Exception('Failed to load event: ${e.toString()}');
     }
   }
 

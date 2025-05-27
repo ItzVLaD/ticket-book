@@ -7,24 +7,33 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:tickets_booking/main.dart';
+import 'package:tickets_booking/providers/theme_mode_notifier.dart';
+import 'package:tickets_booking/providers/event_provider.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  group('Ticket Booking App Tests', () {
+    testWidgets('Theme switching works', (WidgetTester tester) async {
+      final themeModeNotifier = ThemeModeNotifier();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+      // Test initial theme mode (should be system)
+      expect(themeModeNotifier.mode, ThemeMode.system);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+      // Test theme switching
+      themeModeNotifier.setMode(ThemeMode.dark);
+      expect(themeModeNotifier.mode, ThemeMode.dark);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+      themeModeNotifier.setMode(ThemeMode.light);
+      expect(themeModeNotifier.mode, ThemeMode.light);
+    });
+
+    testWidgets('Event provider initializes correctly', (WidgetTester tester) async {
+      final eventProvider = EventsProvider();
+
+      // Test initial state
+      expect(eventProvider.isLoading, false);
+      expect(eventProvider.hasError, false);
+      expect(eventProvider.events.isEmpty, true);
+      expect(eventProvider.groupedEvents.isEmpty, true);
+    });
   });
 }

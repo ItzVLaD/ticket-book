@@ -7,6 +7,7 @@ import 'package:tickets_booking/models/event.dart';
 import 'package:tickets_booking/widgets/event_card.dart';
 import 'package:tickets_booking/widgets/skeleton_loader.dart';
 import 'package:tickets_booking/generated/l10n.dart';
+import 'package:tickets_booking/screens/event_detail_screen.dart';
 
 class SearchScreen extends StatelessWidget {
   const SearchScreen({super.key});
@@ -139,13 +140,23 @@ class _SearchView extends StatelessWidget {
               SliverList(
                 delegate: SliverChildBuilderDelegate((context, index) {
                   if (index < ctrl.results.length) {
-                    return EventCard(event: ctrl.results[index], onTap: () {});
+                    return EventCard(
+                      event: ctrl.results[index],
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => EventDetailScreen(event: ctrl.results[index]),
+                          ),
+                        );
+                      },
+                    );
                   }
                   // loader at bottom
                   return ctrl.isLoading ? const SkeletonEventCard() : const SizedBox.shrink();
                 }, childCount: ctrl.results.length + (ctrl.hasMore ? 1 : 0)),
               ),
-              if (!ctrl.isLoading && ctrl.results.isEmpty)
+              if (!ctrl.isLoading && ctrl.results.isEmpty && ctrl.queryController.text.isNotEmpty)
                 SliverFillRemaining(
                   child: Center(
                     child: Column(
@@ -154,12 +165,36 @@ class _SearchView extends StatelessWidget {
                         Icon(Icons.search_off, size: 64, color: theme.colorScheme.onSurfaceVariant),
                         const SizedBox(height: 16),
                         Text(S.of(context).noResultsFound, style: theme.textTheme.bodyLarge),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Try adjusting your search terms or filters',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
               if (ctrl.hasError)
-                SliverFillRemaining(child: Center(child: Text(S.of(context).errorLoadingEvents))),
+                SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
+                        const SizedBox(height: 16),
+                        Text(S.of(context).errorLoadingEvents, style: theme.textTheme.bodyLarge),
+                        const SizedBox(height: 8),
+                        ElevatedButton.icon(
+                          onPressed: ctrl.refresh,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Try Again'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

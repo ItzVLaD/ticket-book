@@ -8,9 +8,11 @@ class EventsProvider extends ChangeNotifier {
 
   List<Event> _events = [];
   List<EventGroup> _groups = [];
+  String? _lastKeyword;
 
   bool _isLoading = false;
   bool _hasError = false;
+  String _errorMessage = '';
 
   List<Event> get events => _events;
   List<EventGroup> get groupedEvents => _groups;
@@ -22,23 +24,53 @@ class EventsProvider extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
   bool get hasError => _hasError;
+  String get errorMessage => _errorMessage;
 
   Future<void> loadEvents({String keyword = 'concert'}) async {
+    // Avoid unnecessary API calls for same keyword
+    if (_lastKeyword == keyword && _events.isNotEmpty && !_hasError) {
+      return;
+    }
+
     _isLoading = true;
     _hasError = false;
+    _errorMessage = '';
     notifyListeners();
 
     try {
       final raw = await _service.fetchEvents(keyword: keyword);
       _events = raw;
       _groups = _service.groupEvents(raw);
+      _lastKeyword = keyword;
       _hasError = false;
     } catch (e) {
-      // TODO: report error to logging/analytics
+      debugPrint('EventsProvider error: $e');
       _hasError = true;
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      // Keep previous data if available
+      if (_events.isEmpty) {
+        _events = [];
+        _groups = [];
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  /// Force refresh data
+  Future<void> refresh({String keyword = 'concert'}) async {
+    _lastKeyword = null; // Force reload
+    await loadEvents(keyword: keyword);
+  }
+
+  /// Clear all data
+  void clear() {
+    _events = [];
+    _groups = [];
+    _lastKeyword = null;
+    _hasError = false;
+    _errorMessage = '';
+    notifyListeners();
   }
 }

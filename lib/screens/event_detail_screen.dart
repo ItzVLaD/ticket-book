@@ -19,9 +19,8 @@ class EventDetailScreen extends StatefulWidget {
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
   bool _descExpanded = false;
-  int _localQuantity = 1;
+  int? _localQuantity; // Make nullable to detect uninitialized state
   bool _isBookingInProgress = false;
-  bool _hasInitializedQuantity = false; // Add flag to track initialization
   final BookingService _bookingService = BookingService();
 
   @override
@@ -46,9 +45,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 children: [
                   Hero(
                     tag: 'event_${event.id}',
-                    child: event.imageUrl != null
-                        ? Image.network(event.imageUrl!, fit: BoxFit.cover)
-                        : Container(color: Theme.of(context).colorScheme.surface),
+                    child:
+                        event.imageUrl != null
+                            ? Image.network(event.imageUrl!, fit: BoxFit.cover)
+                            : Container(color: Theme.of(context).colorScheme.surface),
                   ),
                   Positioned(
                     top: MediaQuery.of(context).padding.top + 8,
@@ -57,7 +57,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       onPressed: () => Navigator.pop(context),
                       icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
                       style: IconButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.7),
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.surfaceVariant.withOpacity(0.7),
                       ),
                     ),
                   ),
@@ -140,14 +142,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             ],
                           );
                         }
-                        
+
                         if (snapshot.hasError || !snapshot.hasData) {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('100 tickets left'),
-                              const SizedBox(height: 16),
-                            ],
+                            children: [Text('100 tickets left'), const SizedBox(height: 16)],
                           );
                         }
 
@@ -157,15 +156,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           final data = doc.data() as Map<String, dynamic>;
                           totalBooked += (data['ticketsCount'] as int? ?? 0);
                         }
-                        
+
                         final ticketsLeft = 100 - totalBooked;
-                        
+
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('$ticketsLeft tickets left'),
-                            const SizedBox(height: 16),
-                          ],
+                          children: [Text('$ticketsLeft tickets left'), const SizedBox(height: 16)],
                         );
                       },
                     ),
@@ -174,9 +170,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       AnimatedSize(
                         duration: const Duration(milliseconds: 300),
                         child: ConstrainedBox(
-                          constraints: _descExpanded
-                              ? const BoxConstraints()
-                              : const BoxConstraints(maxHeight: 100),
+                          constraints:
+                              _descExpanded
+                                  ? const BoxConstraints()
+                                  : const BoxConstraints(maxHeight: 100),
                           child: Text(
                             event.description ?? '',
                             softWrap: true,
@@ -215,12 +212,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             itemBuilder: (_, i) {
                               final e = similar[i];
                               return InkWell(
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => EventDetailScreen(event: e),
-                                  ),
-                                ),
+                                onTap:
+                                    () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => EventDetailScreen(event: e),
+                                      ),
+                                    ),
                                 child: Padding(
                                   padding: const EdgeInsets.all(8.0),
                                   child: SizedBox(
@@ -230,14 +228,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                       children: [
                                         e.imageUrl != null
                                             ? Image.network(
-                                                e.imageUrl!,
-                                                height: 80,
-                                                fit: BoxFit.cover,
-                                              )
+                                              e.imageUrl!,
+                                              height: 80,
+                                              fit: BoxFit.cover,
+                                            )
                                             : Container(
-                                                height: 80,
-                                                color: Theme.of(context).colorScheme.surface,
-                                              ),
+                                              height: 80,
+                                              color: Theme.of(context).colorScheme.surface,
+                                            ),
                                         const SizedBox(height: 8),
                                         Text(e.name, maxLines: 2, overflow: TextOverflow.ellipsis),
                                         const Spacer(),
@@ -269,7 +267,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   Widget _buildBookingFooter(BuildContext context, user) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return StreamBuilder<DocumentSnapshot>(
       stream: _bookingService.getUserBooking(user.uid, widget.event.id),
       builder: (context, userBookingSnapshot) {
@@ -294,23 +292,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               final data = userBookingSnapshot.data!.data() as Map<String, dynamic>;
               oldQty = data['ticketsCount'] as int? ?? 0;
               hasExistingBooking = true;
-              // Initialize local quantity to current booking on first load
-              if (!_hasInitializedQuantity) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  setState(() {
-                    _localQuantity = oldQty;
-                    _hasInitializedQuantity = true;
-                  });
-                });
-              }
-            } else if (!_hasInitializedQuantity) {
-              // No existing booking, start with 1
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                setState(() {
-                  _localQuantity = 1;
-                  _hasInitializedQuantity = true;
-                });
-              });
+            }
+
+            // Initialize _localQuantity based on current booking state
+            if (_localQuantity == null) {
+              _localQuantity = hasExistingBooking ? oldQty : 1;
             }
 
             // Calculate max allowed quantity
@@ -320,7 +306,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             // Determine CTA button state
             String ctaLabel;
             bool ctaEnabled;
-            
+
             if (!hasExistingBooking) {
               if (_localQuantity == 0) {
                 ctaLabel = 'Select tickets';
@@ -358,32 +344,33 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 child: Row(
                   children: [
                     QuantityPicker(
-                      quantity: _localQuantity,
-                      minQuantity: hasExistingBooking ? 0 : 1, // Allow 0 only if user has existing booking
+                      quantity: _localQuantity!,
+                      minQuantity: hasExistingBooking ? 0 : 1,
                       maxQuantity: maxQuantity,
-                      onDecrement: !_isBookingInProgress && 
-                                  _localQuantity > (hasExistingBooking ? 0 : 1)
-                          ? () => setState(() => _localQuantity--)
-                          : null,
-                      onIncrement: _localQuantity < maxQuantity && 
-                                  ticketsLeft > 0 && 
-                                  !_isBookingInProgress
-                          ? () => setState(() => _localQuantity++)
-                          : null,
+                      onDecrement:
+                          !_isBookingInProgress && _localQuantity! > (hasExistingBooking ? 0 : 1)
+                              ? () => setState(() => _localQuantity = _localQuantity! - 1)
+                              : null,
+                      onIncrement:
+                          _localQuantity! < maxQuantity && ticketsLeft > 0 && !_isBookingInProgress
+                              ? () => setState(() => _localQuantity = _localQuantity! + 1)
+                              : null,
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: ctaEnabled && !_isBookingInProgress 
-                            ? () => _handleBookingAction()
-                            : null,
-                        child: _isBookingInProgress
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : Text(ctaLabel),
+                        onPressed:
+                            ctaEnabled && !_isBookingInProgress
+                                ? () => _handleBookingAction()
+                                : null,
+                        child:
+                            _isBookingInProgress
+                                ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                                : Text(ctaLabel),
                       ),
                     ),
                   ],
@@ -398,30 +385,25 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   Future<void> _handleBookingAction() async {
     final user = context.read<AuthProvider>().user;
-    if (user == null) return;
+    if (user == null || _localQuantity == null) return;
 
     setState(() => _isBookingInProgress = true);
 
     try {
-      await _bookingService.updateBooking(
-        user: user,
-        event: widget.event,
-        newQty: _localQuantity,
-      );
+      await _bookingService.updateBooking(user: user, event: widget.event, newQty: _localQuantity!);
 
       if (mounted) {
         String message;
         if (_localQuantity == 0) {
           message = 'Booking cancelled successfully';
+          // Reset quantity after successful cancellation
+          setState(() => _localQuantity = 1);
         } else {
           message = 'Booking updated successfully';
         }
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-          ),
+          SnackBar(content: Text(message), backgroundColor: Theme.of(context).colorScheme.primary),
         );
       }
     } catch (e) {

@@ -19,7 +19,7 @@ class QuantityPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -36,9 +36,7 @@ class QuantityPicker extends StatelessWidget {
           child: Text(
             quantity.toString(),
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
         ),
         IconButton(

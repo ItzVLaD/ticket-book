@@ -1,4 +1,20 @@
 import 'package:intl/intl.dart';
+import 'package:tickets_booking/models/search_filters.dart'; // if needed, else ignore
+
+/// Represents price range info from Ticketmaster
+class PriceRange {
+  final double? min;
+  final double? max;
+  final String? currency;
+  PriceRange({this.min, this.max, this.currency});
+  factory PriceRange.fromJson(Map<String, dynamic> json) {
+    return PriceRange(
+      min: (json['min'] as num?)?.toDouble(),
+      max: (json['max'] as num?)?.toDouble(),
+      currency: json['currency'] as String?,
+    );
+  }
+}
 
 class Event {
   final String id;
@@ -12,6 +28,7 @@ class Event {
   final String? seriesId;
   final String? seriesName;
   final String? firstAttractionId;
+  final List<PriceRange>? priceRanges;
 
   Event({
     required this.id,
@@ -25,6 +42,7 @@ class Event {
     this.seriesId,
     this.seriesName,
     this.firstAttractionId,
+    this.priceRanges,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -42,6 +60,8 @@ class Event {
     final seriesName = series?['name'] as String?;
     final attractions = (json['_embedded']?['attractions'] as List?) ?? [];
     final firstAttractionId = attractions.isNotEmpty ? attractions[0]['id'] as String? : null;
+    final prList = (json['priceRanges'] as List?)?.cast<Map<String, dynamic>>();
+    final priceRanges = prList?.map((p) => PriceRange.fromJson(p)).toList();
 
     return Event(
       id: json['id'] as String,
@@ -55,6 +75,7 @@ class Event {
       seriesId: seriesId,
       seriesName: seriesName,
       firstAttractionId: firstAttractionId,
+      priceRanges: priceRanges,
     );
   }
 

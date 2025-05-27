@@ -14,6 +14,12 @@ class EventsProvider extends ChangeNotifier {
 
   List<Event> get events => _events;
   List<EventGroup> get groupedEvents => _groups;
+
+  /// Returns a flat list of events from all groups except the provided one.
+  List<Event> similarEventsFor(EventGroup group) {
+    return _groups.where((g) => g.id != group.id).expand((g) => g.schedules).toList();
+  }
+
   bool get isLoading => _isLoading;
   bool get hasError => _hasError;
 

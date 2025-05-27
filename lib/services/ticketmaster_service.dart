@@ -53,11 +53,9 @@ class TicketmasterService {
 
   Future<Event?> fetchEventById(String eventId) async {
     try {
-      final uri = Uri.parse('$baseUrl/events/$eventId.json').replace(
-        queryParameters: {
-          'apikey': apiKey,
-        },
-      );
+      final uri = Uri.parse(
+        '$baseUrl/events/$eventId.json',
+      ).replace(queryParameters: {'apikey': apiKey});
 
       final response = await http.get(uri).timeout(_timeout);
 

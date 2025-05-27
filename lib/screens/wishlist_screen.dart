@@ -28,15 +28,15 @@ class WishlistScreenState extends State<WishlistScreen> {
     setState(() => _loading = true);
     final wishProvider = context.read<WishlistProvider>();
     final eventsProvider = context.read<EventsProvider>();
-    
+
     // Load wishlist IDs
     await wishProvider.loadWishlist();
-    
+
     // Ensure events are loaded before filtering
     if (eventsProvider.events.isEmpty && !eventsProvider.isLoading) {
       await eventsProvider.loadEvents();
     }
-    
+
     final ids = wishProvider.wishlist;
     final all = eventsProvider.events;
     _items = all.where((e) => ids.contains(e.id)).toList();
@@ -46,13 +46,10 @@ class WishlistScreenState extends State<WishlistScreen> {
   Future<void> _refresh() async {
     final wishProvider = context.read<WishlistProvider>();
     final eventsProvider = context.read<EventsProvider>();
-    
+
     // Refresh both wishlist and events
-    await Future.wait([
-      wishProvider.loadWishlist(),
-      eventsProvider.refresh(),
-    ]);
-    
+    await Future.wait([wishProvider.loadWishlist(), eventsProvider.refresh()]);
+
     final ids = wishProvider.wishlist;
     final all = eventsProvider.events;
     setState(() {
@@ -112,11 +109,7 @@ class WishlistScreenState extends State<WishlistScreen> {
               const SizedBox(height: 4),
               Text(
                 'Remove',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
               ),
             ],
           ),
@@ -125,9 +118,7 @@ class WishlistScreenState extends State<WishlistScreen> {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => EventDetailScreen(event: event),
-              ),
+              MaterialPageRoute(builder: (_) => EventDetailScreen(event: event)),
             );
           },
           borderRadius: BorderRadius.circular(12),
@@ -138,44 +129,45 @@ class WishlistScreenState extends State<WishlistScreen> {
                 // Event Image
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: event.imageUrl != null
-                      ? Image.network(
-                          event.imageUrl!,
-                          width: 80,
-                          height: 80,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(
-                                Icons.event,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                size: 32,
-                              ),
-                            );
-                          },
-                        )
-                      : Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(8),
+                  child:
+                      event.imageUrl != null
+                          ? Image.network(
+                            event.imageUrl!,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.event,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  size: 32,
+                                ),
+                              );
+                            },
+                          )
+                          : Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.event,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              size: 32,
+                            ),
                           ),
-                          child: Icon(
-                            Icons.event,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            size: 32,
-                          ),
-                        ),
                 ),
                 const SizedBox(width: 16),
-                
+
                 // Event Details
                 Expanded(
                   child: Column(
@@ -183,9 +175,9 @@ class WishlistScreenState extends State<WishlistScreen> {
                     children: [
                       Text(
                         event.name,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -232,15 +224,11 @@ class WishlistScreenState extends State<WishlistScreen> {
                     ],
                   ),
                 ),
-                
+
                 // Favorite Icon and Arrow
                 Column(
                   children: [
-                    Icon(
-                      Icons.favorite,
-                      color: Theme.of(context).colorScheme.error,
-                      size: 24,
-                    ),
+                    Icon(Icons.favorite, color: Theme.of(context).colorScheme.error, size: 24),
                     const SizedBox(height: 8),
                     Icon(
                       Icons.arrow_forward_ios,
@@ -270,40 +258,42 @@ class WishlistScreenState extends State<WishlistScreen> {
               onPressed: () {
                 showDialog(
                   context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Wishlist Tips'),
-                    content: const Text(
-                      '• Tap any event to view details\n'
-                      '• Swipe right to remove from wishlist\n'
-                      '• Pull down to refresh your wishlist',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Got it'),
+                  builder:
+                      (context) => AlertDialog(
+                        title: const Text('Wishlist Tips'),
+                        content: const Text(
+                          '• Tap any event to view details\n'
+                          '• Swipe right to remove from wishlist\n'
+                          '• Pull down to refresh your wishlist',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Got it'),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
                 );
               },
             ),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
+      body:
+          _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _items.isEmpty
               ? _buildEmptyState()
               : RefreshIndicator(
-                  onRefresh: _refresh,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: _items.length,
-                    itemBuilder: (context, index) {
-                      final event = _items[index];
-                      return _buildItem(event, index);
-                    },
-                  ),
+                onRefresh: _refresh,
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: _items.length,
+                  itemBuilder: (context, index) {
+                    final event = _items[index];
+                    return _buildItem(event, index);
+                  },
                 ),
+              ),
     );
   }
 
@@ -329,9 +319,9 @@ class WishlistScreenState extends State<WishlistScreen> {
             const SizedBox(height: 24),
             Text(
               'Your wishlist is empty',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),

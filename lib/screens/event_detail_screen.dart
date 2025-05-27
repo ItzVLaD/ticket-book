@@ -6,6 +6,7 @@ import 'package:tickets_booking/providers/event_provider.dart';
 import 'package:tickets_booking/providers/wishlist_provider.dart';
 import 'package:tickets_booking/providers/auth_provider.dart';
 import 'package:tickets_booking/services/booking_service.dart';
+import 'package:tickets_booking/widgets/quantity_picker.dart';
 import 'package:tickets_booking/generated/l10n.dart';
 
 class EventDetailScreen extends StatefulWidget {
@@ -18,12 +19,18 @@ class EventDetailScreen extends StatefulWidget {
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
   bool _descExpanded = false;
+  int _localQuantity = 1;
+  bool _isBookingInProgress = false;
+  bool _hasInitializedQuantity = false; // Add flag to track initialization
+  final BookingService _bookingService = BookingService();
 
   @override
   Widget build(BuildContext context) {
     final event = widget.event;
     final wishlist = context.watch<WishlistProvider>();
     final provider = context.watch<EventsProvider>();
+    final auth = context.watch<AuthProvider>();
+    final user = auth.user;
 
     return Scaffold(
       body: CustomScrollView(
@@ -39,10 +46,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 children: [
                   Hero(
                     tag: 'event_${event.id}',
-                    child:
-                        event.imageUrl != null
-                            ? Image.network(event.imageUrl!, fit: BoxFit.cover)
-                            : Container(color: Theme.of(context).colorScheme.surface),
+                    child: event.imageUrl != null
+                        ? Image.network(event.imageUrl!, fit: BoxFit.cover)
+                        : Container(color: Theme.of(context).colorScheme.surface),
                   ),
                   Positioned(
                     top: MediaQuery.of(context).padding.top + 8,
@@ -51,9 +57,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       onPressed: () => Navigator.pop(context),
                       icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
                       style: IconButton.styleFrom(
-                        backgroundColor: Theme.of(
-                          context,
-                        ).colorScheme.surfaceVariant.withOpacity(0.7),
+                        backgroundColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.7),
                       ),
                     ),
                   ),
@@ -74,7 +78,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         IconButton(
                           icon: Icon(Icons.share, color: Theme.of(context).colorScheme.onSurface),
                           onPressed: () {
-                            // TODO: integrate share plugin
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text(S.of(context).shareFeatureComingSoon)),
                             );
@@ -120,59 +123,47 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       ),
                       const SizedBox(height: 16),
                     ],
-                    // Tickets availability
-                    StreamBuilder<DocumentSnapshot>(
-                      stream: FirebaseFirestore.instance.doc('events/${event.id}').snapshots(),
-                      builder: (context, snap) {
-                        // Show unknown availability while loading
-                        if (snap.connectionState == ConnectionState.waiting) {
-                          return Column(
+                    // Live availability display
+                    StreamBuilder<QuerySnapshot>(
+                      stream: _bookingService.getEventBookings(event.id),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Row(
                             children: [
-                              Text('Availability unknown'),
-                              LinearProgressIndicator(value: 0),
+                              const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                              const SizedBox(width: 8),
+                              Text('Loading availability...'),
+                            ],
+                          );
+                        }
+                        
+                        if (snapshot.hasError || !snapshot.hasData) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('100 tickets left'),
                               const SizedBox(height: 16),
                             ],
                           );
                         }
-                        if (snap.hasError || snap.data == null) {
-                          return Column(
-                            children: [
-                              Text('Availability unknown'),
-                              LinearProgressIndicator(value: 0),
-                              const SizedBox(height: 16),
-                            ],
-                          );
+
+                        // Calculate total booked tickets
+                        int totalBooked = 0;
+                        for (final doc in snapshot.data!.docs) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          totalBooked += (data['ticketsCount'] as int? ?? 0);
                         }
-                        final doc = snap.data!;
-                        if (!doc.exists) {
-                          return Column(
-                            children: [
-                              Text('Availability unknown'),
-                              LinearProgressIndicator(value: 0),
-                              const SizedBox(height: 16),
-                            ],
-                          );
-                        }
-                        // Access availableTickets safely
-                        final data = doc.data() as Map<String, dynamic>?;
-                        final avail = data?['availableTickets'] as int?;
-                        if (avail == null) {
-                          return Column(
-                            children: [
-                              Text('Availability unknown'),
-                              LinearProgressIndicator(value: 0),
-                              const SizedBox(height: 16),
-                            ],
-                          );
-                        }
-                        final total = event.totalTickets;
-                        final ratio = total > 0 ? avail / total : 0.0;
+                        
+                        final ticketsLeft = 100 - totalBooked;
+                        
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            LinearProgressIndicator(value: ratio),
-                            const SizedBox(height: 4),
-                            Text('$avail tickets left'),
+                            Text('$ticketsLeft tickets left'),
                             const SizedBox(height: 16),
                           ],
                         );
@@ -183,10 +174,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       AnimatedSize(
                         duration: const Duration(milliseconds: 300),
                         child: ConstrainedBox(
-                          constraints:
-                              _descExpanded
-                                  ? const BoxConstraints()
-                                  : const BoxConstraints(maxHeight: 100),
+                          constraints: _descExpanded
+                              ? const BoxConstraints()
+                              : const BoxConstraints(maxHeight: 100),
                           child: Text(
                             event.description ?? '',
                             softWrap: true,
@@ -214,7 +204,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       height: 180,
                       child: Builder(
                         builder: (ctx) {
-                          // find current group and similar events
                           final group = provider.groupedEvents.firstWhere(
                             (g) => g.schedules.any((e) => e.id == event.id),
                           );
@@ -226,13 +215,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             itemBuilder: (_, i) {
                               final e = similar[i];
                               return InkWell(
-                                onTap:
-                                    () => Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => EventDetailScreen(event: e),
-                                      ),
-                                    ),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => EventDetailScreen(event: e),
+                                  ),
+                                ),
                                 child: Padding(
                                   padding: const EdgeInsets.all(8.0),
                                   child: SizedBox(
@@ -242,14 +230,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                       children: [
                                         e.imageUrl != null
                                             ? Image.network(
-                                              e.imageUrl!,
-                                              height: 80,
-                                              fit: BoxFit.cover,
-                                            )
+                                                e.imageUrl!,
+                                                height: 80,
+                                                fit: BoxFit.cover,
+                                              )
                                             : Container(
-                                              height: 80,
-                                              color: Theme.of(context).colorScheme.surface,
-                                            ),
+                                                height: 80,
+                                                color: Theme.of(context).colorScheme.surface,
+                                              ),
                                         const SizedBox(height: 8),
                                         Text(e.name, maxLines: 2, overflow: TextOverflow.ellipsis),
                                         const Spacer(),
@@ -267,104 +255,188 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         },
                       ),
                     ),
-                    const SizedBox(height: 80),
+                    const SizedBox(height: 100), // Space for bottom footer
                   ],
                 ),
               ),
             ]),
           ),
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: ElevatedButton(
-                  onPressed: () => _showBookingSheet(context),
-                  child: Text(S.of(context).bookTickets),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
+      bottomSheet: user != null ? _buildBookingFooter(context, user) : null,
     );
   }
 
-  void _showBookingSheet(BuildContext context) {
-    int qty = 1;
-    final auth = context.read<AuthProvider>();
-    showModalBottomSheet(
-      context: context,
-      builder: (_) {
-        return StatefulBuilder(
-          builder: (c, setc) {
-            return Padding(
+  Widget _buildBookingFooter(BuildContext context, user) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return StreamBuilder<DocumentSnapshot>(
+      stream: _bookingService.getUserBooking(user.uid, widget.event.id),
+      builder: (context, userBookingSnapshot) {
+        return StreamBuilder<QuerySnapshot>(
+          stream: _bookingService.getEventBookings(widget.event.id),
+          builder: (context, eventBookingsSnapshot) {
+            // Calculate tickets left
+            int ticketsLeft = 100;
+            if (eventBookingsSnapshot.hasData) {
+              int totalBooked = 0;
+              for (final doc in eventBookingsSnapshot.data!.docs) {
+                final data = doc.data() as Map<String, dynamic>;
+                totalBooked += (data['ticketsCount'] as int? ?? 0);
+              }
+              ticketsLeft = 100 - totalBooked;
+            }
+
+            // Get user's current booking
+            int oldQty = 0;
+            bool hasExistingBooking = false;
+            if (userBookingSnapshot.hasData && userBookingSnapshot.data!.exists) {
+              final data = userBookingSnapshot.data!.data() as Map<String, dynamic>;
+              oldQty = data['ticketsCount'] as int? ?? 0;
+              hasExistingBooking = true;
+              // Initialize local quantity to current booking on first load
+              if (!_hasInitializedQuantity) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  setState(() {
+                    _localQuantity = oldQty;
+                    _hasInitializedQuantity = true;
+                  });
+                });
+              }
+            } else if (!_hasInitializedQuantity) {
+              // No existing booking, start with 1
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                setState(() {
+                  _localQuantity = 1;
+                  _hasInitializedQuantity = true;
+                });
+              });
+            }
+
+            // Calculate max allowed quantity
+            final availableToAdd = ticketsLeft + oldQty; // Include user's current booking
+            final maxQuantity = availableToAdd < 10 ? availableToAdd : 10;
+
+            // Determine CTA button state
+            String ctaLabel;
+            bool ctaEnabled;
+            
+            if (!hasExistingBooking) {
+              if (_localQuantity == 0) {
+                ctaLabel = 'Select tickets';
+                ctaEnabled = false;
+              } else {
+                ctaLabel = 'Book tickets';
+                ctaEnabled = true;
+              }
+            } else {
+              if (_localQuantity == oldQty) {
+                ctaLabel = 'Booked ✓';
+                ctaEnabled = false;
+              } else if (_localQuantity == 0) {
+                ctaLabel = 'Cancel booking';
+                ctaEnabled = true;
+              } else {
+                ctaLabel = 'Update booking';
+                ctaEnabled = true;
+              }
+            }
+
+            return Container(
               padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    S.of(context).selectQuantity,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        onPressed: qty > 1 ? () => setc(() => qty--) : null,
-                        icon: const Icon(Icons.remove),
-                      ),
-                      Text(qty.toString(), style: Theme.of(context).textTheme.headlineMedium),
-                      IconButton(
-                        onPressed: qty < 6 ? () => setc(() => qty++) : null,
-                        icon: const Icon(Icons.add),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: Text(S.of(context).cancel),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            final user = auth.user;
-                            if (user == null) return;
-                            await BookingService().bookTickets(
-                              user: user,
-                              eventId: widget.event.id,
-                              ticketsCount: qty,
-                              eventName: widget.event.name,
-                              eventDate: widget.event.dateFormatted,
-                            );
-                            if (context.mounted) {
-                              Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(S.of(context).bookingSuccess(widget.event.name)),
-                                ),
-                              );
-                            }
-                          },
-                          child: Text(S.of(context).confirm),
-                        ),
-                      ),
-                    ],
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.shadow.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, -2),
                   ),
                 ],
+              ),
+              child: SafeArea(
+                child: Row(
+                  children: [
+                    QuantityPicker(
+                      quantity: _localQuantity,
+                      minQuantity: hasExistingBooking ? 0 : 1, // Allow 0 only if user has existing booking
+                      maxQuantity: maxQuantity,
+                      onDecrement: !_isBookingInProgress && 
+                                  _localQuantity > (hasExistingBooking ? 0 : 1)
+                          ? () => setState(() => _localQuantity--)
+                          : null,
+                      onIncrement: _localQuantity < maxQuantity && 
+                                  ticketsLeft > 0 && 
+                                  !_isBookingInProgress
+                          ? () => setState(() => _localQuantity++)
+                          : null,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: ctaEnabled && !_isBookingInProgress 
+                            ? () => _handleBookingAction()
+                            : null,
+                        child: _isBookingInProgress
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Text(ctaLabel),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           },
         );
       },
     );
+  }
+
+  Future<void> _handleBookingAction() async {
+    final user = context.read<AuthProvider>().user;
+    if (user == null) return;
+
+    setState(() => _isBookingInProgress = true);
+
+    try {
+      await _bookingService.updateBooking(
+        user: user,
+        event: widget.event,
+        newQty: _localQuantity,
+      );
+
+      if (mounted) {
+        String message;
+        if (_localQuantity == 0) {
+          message = 'Booking cancelled successfully';
+        } else {
+          message = 'Booking updated successfully';
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isBookingInProgress = false);
+      }
+    }
   }
 }

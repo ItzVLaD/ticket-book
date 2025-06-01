@@ -680,39 +680,133 @@ class _BookingsSection extends StatelessWidget {
         );
       }
 
-      // Group by month-year
-      final groups = <String, List<QueryDocumentSnapshot>>{};
+      // Separate current and expired bookings
+      final currentBookings = <QueryDocumentSnapshot>[];
+      final expiredBookings = <QueryDocumentSnapshot>[];
+
       for (var doc in docs) {
-        final date = (doc['bookedAt'] as Timestamp).toDate();
-        final key = DateFormat.yMMMM().format(date);
-        groups.putIfAbsent(key, () => []).add(doc);
+        final data = doc.data()! as Map<String, dynamic>;
+        final eventDateStr = data['eventDate'] as String?;
+
+        bool isExpired = false;
+        if (eventDateStr != null && eventDateStr.isNotEmpty) {
+          try {
+            final eventDate = DateTime.tryParse(eventDateStr);
+            if (eventDate != null) {
+              final now = DateTime.now();
+              final today = DateTime(now.year, now.month, now.day);
+              final eventDateOnly = DateTime(eventDate.year, eventDate.month, eventDate.day);
+              isExpired = eventDateOnly.isBefore(today);
+            }
+          } catch (e) {
+            // If date parsing fails, treat as current
+          }
+        }
+
+        if (isExpired) {
+          expiredBookings.add(doc);
+        } else {
+          currentBookings.add(doc);
+        }
       }
 
-      final sliverChildren =
-          groups.entries.map((entry) {
-            final month = entry.key;
-            final items = entry.value;
+      final sliverChildren = <Widget>[];
 
-            return Card(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: ExpansionTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.calendar_month,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    size: 20,
-                  ),
+      // Current bookings section
+      if (currentBookings.isNotEmpty) {
+        sliverChildren.add(
+          _buildBookingsGroup(
+            context,
+            'Current Bookings',
+            currentBookings,
+            Icons.event_available,
+            false,
+          ),
+        );
+      }
+
+      // Expired bookings section
+      if (expiredBookings.isNotEmpty) {
+        sliverChildren.add(
+          _buildBookingsGroup(context, 'Past Events', expiredBookings, Icons.history, true),
+        );
+      }
+
+      return SliverList(delegate: SliverChildListDelegate(sliverChildren));
+    },
+  );
+
+  Widget _buildBookingsGroup(
+    BuildContext context,
+    String title,
+    List<QueryDocumentSnapshot> bookings,
+    IconData icon,
+    bool isExpired,
+  ) {
+    // Group by month-year
+    final groups = <String, List<QueryDocumentSnapshot>>{};
+    for (var doc in bookings) {
+      final date = (doc['bookedAt'] as Timestamp).toDate();
+      final key = DateFormat.yMMMM().format(date);
+      groups.putIfAbsent(key, () => []).add(doc);
+    }
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: ExpansionTile(
+        initiallyExpanded: !isExpired, // Expand current bookings by default
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color:
+                isExpired
+                    ? Theme.of(context).colorScheme.surfaceVariant
+                    : Theme.of(context).colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            color:
+                isExpired
+                    ? Theme.of(context).colorScheme.onSurfaceVariant
+                    : Theme.of(context).colorScheme.onPrimaryContainer,
+            size: 20,
+          ),
+        ),
+        title: Text(
+          title,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: isExpired ? Theme.of(context).colorScheme.onSurface.withOpacity(0.7) : null,
+          ),
+        ),
+        subtitle: Text(
+          '${bookings.length} booking${bookings.length == 1 ? '' : 's'}',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+          ),
+        ),
+        children:
+            groups.entries.map((entry) {
+              final month = entry.key;
+              final items = entry.value;
+
+              return ExpansionTile(
+                leading: Icon(
+                  Icons.calendar_month,
+                  color:
+                      isExpired
+                          ? Theme.of(context).colorScheme.onSurface.withOpacity(0.5)
+                          : Theme.of(context).colorScheme.primary,
+                  size: 20,
                 ),
                 title: Text(
                   month,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color:
+                        isExpired ? Theme.of(context).colorScheme.onSurface.withOpacity(0.7) : null,
+                  ),
                 ),
                 subtitle: Text(
                   '${items.length} booking${items.length == 1 ? '' : 's'}',
@@ -729,34 +823,71 @@ class _BookingsSection extends StatelessWidget {
                       final eventDate = data['eventDate'] as String? ?? '';
 
                       return ListTile(
-                        onTap: () => _navigateToEvent(context, eventId),
+                        onTap: isExpired ? null : () => _navigateToEvent(context, eventId),
                         leading: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.secondaryContainer,
+                            color:
+                                isExpired
+                                    ? Theme.of(context).colorScheme.surfaceVariant
+                                    : Theme.of(context).colorScheme.secondaryContainer,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
-                            Icons.event,
-                            color: Theme.of(context).colorScheme.onSecondaryContainer,
+                            isExpired ? Icons.event_busy : Icons.event,
+                            color:
+                                isExpired
+                                    ? Theme.of(context).colorScheme.onSurfaceVariant
+                                    : Theme.of(context).colorScheme.onSecondaryContainer,
                             size: 20,
                           ),
                         ),
                         title: Text(
                           eventName,
-                          style: Theme.of(
-                            context,
-                          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color:
+                                isExpired
+                                    ? Theme.of(context).colorScheme.onSurface.withOpacity(0.6)
+                                    : null,
+                            decoration: isExpired ? TextDecoration.lineThrough : null,
+                          ),
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              '$ticketsCount ticket${ticketsCount == 1 ? '' : 's'}',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.w500,
-                              ),
+                            Row(
+                              children: [
+                                Text(
+                                  '$ticketsCount ticket${ticketsCount == 1 ? '' : 's'}',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color:
+                                        isExpired
+                                            ? Theme.of(
+                                              context,
+                                            ).colorScheme.onSurface.withOpacity(0.5)
+                                            : Theme.of(context).colorScheme.primary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                if (isExpired) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).colorScheme.errorContainer,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'EXPIRED',
+                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                        color: Theme.of(context).colorScheme.onErrorContainer,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                             if (eventDate.isNotEmpty)
                               Text(
@@ -767,51 +898,58 @@ class _BookingsSection extends StatelessWidget {
                               ),
                           ],
                         ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.arrow_forward_ios,
-                              size: 16,
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                            ),
-                          ],
-                        ),
-                        onLongPress: () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder:
-                                (_) => AlertDialog(
-                                  title: Text(S.of(context).cancelBooking),
-                                  content: Text(S.of(context).confirmCancel),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context, false),
-                                      child: Text(S.of(context).no),
-                                    ),
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context, true),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Theme.of(context).colorScheme.error,
-                                      ),
-                                      child: Text(S.of(context).yes),
+                        trailing:
+                            !isExpired
+                                ? Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.arrow_forward_ios,
+                                      size: 16,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface.withOpacity(0.5),
                                     ),
                                   ],
-                                ),
-                          );
-                          if (confirm == true) {
-                            await doc.reference.delete();
-                          }
-                        },
+                                )
+                                : null,
+                        onLongPress:
+                            !isExpired
+                                ? () async {
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder:
+                                        (_) => AlertDialog(
+                                          title: Text(S.of(context).cancelBooking),
+                                          content: Text(S.of(context).confirmCancel),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(context, false),
+                                              child: Text(S.of(context).no),
+                                            ),
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(context, true),
+                                              style: TextButton.styleFrom(
+                                                foregroundColor:
+                                                    Theme.of(context).colorScheme.error,
+                                              ),
+                                              child: Text(S.of(context).yes),
+                                            ),
+                                          ],
+                                        ),
+                                  );
+                                  if (confirm == true) {
+                                    await doc.reference.delete();
+                                  }
+                                }
+                                : null,
                       );
                     }).toList(),
-              ),
-            );
-          }).toList();
-
-      return SliverList(delegate: SliverChildListDelegate(sliverChildren));
-    },
-  );
+              );
+            }).toList(),
+      ),
+    );
+  }
 }
 
 class _DeleteAccountDialog extends StatefulWidget {

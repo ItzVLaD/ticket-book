@@ -64,9 +64,9 @@ class HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<EventsProvider>();
-    final groups = provider.groupedEvents;
-    // hero uses initial groups only
-    final heroGroups = _heroGroups ?? groups;
+    final groups = provider.currentGroupedEvents; // Use filtered current events only
+    // hero uses initial groups only, but filter for current events
+    final heroGroups = _heroGroups?.where((group) => group.hasCurrentEvents).toList() ?? groups;
     final topHero = heroGroups.length > 5 ? heroGroups.sublist(0, 5) : heroGroups;
     final theme = Theme.of(context);
 

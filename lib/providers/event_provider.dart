@@ -17,9 +17,16 @@ class EventsProvider extends ChangeNotifier {
   List<Event> get events => _events;
   List<EventGroup> get groupedEvents => _groups;
 
-  /// Returns a flat list of events from all groups except the provided one.
+  /// Returns only current (non-expired) events
+  List<Event> get currentEvents => _events.where((event) => event.isCurrent).toList();
+
+  /// Returns only event groups that have at least one current event
+  List<EventGroup> get currentGroupedEvents =>
+      _groups.where((group) => group.hasCurrentEvents).toList();
+
+  /// Returns a flat list of current (non-expired) events from all groups except the provided one.
   List<Event> similarEventsFor(EventGroup group) {
-    return _groups.where((g) => g.id != group.id).expand((g) => g.schedules).toList();
+    return _groups.where((g) => g.id != group.id).expand((g) => g.currentSchedules).toList();
   }
 
   bool get isLoading => _isLoading;

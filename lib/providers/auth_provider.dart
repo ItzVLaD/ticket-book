@@ -2,10 +2,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
+import '../services/booking_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
   final UserService _userService = UserService();
+  final BookingService _bookingService = BookingService();
 
   User? _user;
   bool _isLoading = false;
@@ -14,10 +16,12 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   AuthProvider() {
-    _authService.authStateChanges.listen((User? user) {
+    _authService.authStateChanges.listen((User? user) async {
       _user = user;
       if (_user != null) {
-        _userService.createOrUpdateUser(_user!);
+        await _userService.createOrUpdateUser(_user!);
+        // Clean up expired bookings when user signs in
+        await _bookingService.removeExpiredBookings(_user!.uid);
       }
       notifyListeners();
     });

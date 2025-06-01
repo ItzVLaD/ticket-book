@@ -1,43 +1,32 @@
-import 'package:intl/intl.dart';
-import 'package:tickets_booking/models/search_filters.dart'; // if needed, else ignore
-
 /// Represents price range info from Ticketmaster
 class PriceRange {
+  const PriceRange({required this.currency, this.min, this.max});
+
+  factory PriceRange.fromJson(Map<String, dynamic> json) => PriceRange(
+    min: (json['min'] as num?)?.toDouble(),
+    max: (json['max'] as num?)?.toDouble(),
+    currency: json['currency'] as String? ?? 'USD',
+  );
+
   final double? min;
   final double? max;
-  final String? currency;
-  PriceRange({this.min, this.max, this.currency});
-  factory PriceRange.fromJson(Map<String, dynamic> json) {
-    return PriceRange(
-      min: (json['min'] as num?)?.toDouble(),
-      max: (json['max'] as num?)?.toDouble(),
-      currency: json['currency'] as String?,
-    );
-  }
+  final String currency;
 }
 
 class Event {
-  final String id;
-  final String name;
-  final String? description;
-  final String? imageUrl;
-  final String? venue;
-  final DateTime? date;
-  final String? seatMapUrl;
-  final int totalTickets;
-  final String? seriesId;
-  final String? seriesName;
-  final String? firstAttractionId;
-  final List<PriceRange>? priceRanges;
-
   Event({
     required this.id,
     required this.name,
     this.description,
-    this.imageUrl,
-    this.venue,
     this.date,
-    this.seatMapUrl,
+    this.venue,
+    this.city,
+    this.imageUrl,
+    this.genre,
+    this.url,
+    this.minPrice,
+    this.maxPrice,
+    this.currency,
     this.totalTickets = 100,
     this.seriesId,
     this.seriesName,
@@ -45,16 +34,33 @@ class Event {
     this.priceRanges,
   });
 
+  final String id;
+  final String name;
+  final String? description;
+  final DateTime? date;
+  final String? venue;
+  final String? city;
+  final String? imageUrl;
+  final String? genre;
+  final String? url;
+  final double? minPrice;
+  final double? maxPrice;
+  final String? currency;
+  final int totalTickets;
+  final String? seriesId;
+  final String? seriesName;
+  final String? firstAttractionId;
+  final List<PriceRange>? priceRanges;
+
   factory Event.fromJson(Map<String, dynamic> json) {
     final images = (json['images'] as List?) ?? [];
     final imageUrl = images.isNotEmpty ? images[0]['url'] as String? : null;
     final venues = (json['_embedded']?['venues'] as List?) ?? [];
-    final dateString = (json['dates']?['start']?['localDate'] as String?);
+    final dateString = json['dates']?['start']?['localDate'] as String?;
     DateTime? parsedDate;
     if (dateString != null) {
       parsedDate = DateTime.tryParse(dateString);
     }
-    final seatMap = (json['seatmap']?['static']?['url']) as String?;
     final series = json['series'] as Map<String, dynamic>?;
     final seriesId = series?['id'] as String?;
     final seriesName = series?['name'] as String?;
@@ -70,7 +76,6 @@ class Event {
       imageUrl: imageUrl,
       venue: venues.isNotEmpty ? venues[0]['name'] as String? : null,
       date: parsedDate,
-      seatMapUrl: seatMap,
       totalTickets: 100,
       seriesId: seriesId,
       seriesName: seriesName,
@@ -80,7 +85,23 @@ class Event {
   }
 
   String get dateFormatted {
-    if (date == null) return '';
-    return DateFormat.yMMMd().format(date!);
+    if (date == null) {
+      return 'Date TBA';
+    }
+    return '${date!.day}/${date!.month}/${date!.year}';
   }
+
+  /// Check if the event is expired (date has passed)
+  bool get isExpired {
+    if (date == null) {
+      return false;
+    }
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final eventDateOnly = DateTime(date!.year, date!.month, date!.day);
+    return eventDateOnly.isBefore(today);
+  }
+
+  /// Check if the event is current (not expired)
+  bool get isCurrent => !isExpired;
 }

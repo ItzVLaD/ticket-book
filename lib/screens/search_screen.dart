@@ -56,10 +56,14 @@ class SearchController extends ChangeNotifier {
       final pageKey = _page + 1;
       final pageResults = await _service.fetchEvents(keyword: queryController.text);
       if (_disposed) return;
-      if (pageResults.isEmpty) {
+
+      // Filter out expired events
+      final currentEvents = pageResults.where((event) => event.isCurrent).toList();
+
+      if (currentEvents.isEmpty) {
         hasMore = false;
       } else {
-        results.addAll(pageResults);
+        results.addAll(currentEvents);
         _page = pageKey;
       }
     } catch (e) {
@@ -98,7 +102,7 @@ class SearchController extends ChangeNotifier {
 }
 
 class _SearchView extends StatelessWidget {
-  const _SearchView({super.key});
+  const _SearchView();
 
   @override
   Widget build(BuildContext context) {
@@ -220,7 +224,8 @@ class _SearchView extends StatelessWidget {
 
 class _FilterSheet extends StatefulWidget {
   final SearchFilters initial;
-  const _FilterSheet({required this.initial, super.key});
+
+  const _FilterSheet({required this.initial});
 
   @override
   State<_FilterSheet> createState() => _FilterSheetState();

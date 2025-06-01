@@ -35,111 +35,82 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     _selectedEvent = widget.event; // Initialize with the passed event
   }
 
-  // Handle venue/date selection for grouped events
-  void _onEventVariationSelected(Event selectedEvent) {
-    setState(() {
-      _selectedEvent = selectedEvent;
-      // Reset quantity when switching events
-      _localQuantity = null;
-    });
-  }
-
   // Venue selector widget for grouped events
-  Widget _buildVenueSelector(ColorScheme colorScheme, ThemeData theme) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: colorScheme.surfaceVariant.withOpacity(0.5),
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: colorScheme.outline.withOpacity(0.3)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.event_available, color: colorScheme.onSurfaceVariant, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              'Select Date & Venue',
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
-          ),
-          child: DropdownButton<Event>(
-            value: _selectedEvent,
-            isExpanded: true,
-            underline: const SizedBox(),
-            icon: Icon(Icons.arrow_drop_down, color: colorScheme.onSurface),
-            onChanged: (Event? newValue) {
-              if (newValue != null) {
-                _onEventVariationSelected(newValue);
-              }
-            },
-            items:
-                widget.eventGroup?.schedules.map<DropdownMenuItem<Event>>((event) {
-                  String displayText = '';
-                  if (event.dateFormatted.isNotEmpty && event.venue != null) {
-                    displayText = '${event.dateFormatted} • ${event.venue}';
-                  } else if (event.dateFormatted.isNotEmpty) {
-                    displayText = event.dateFormatted;
-                  } else if (event.venue != null) {
-                    displayText = event.venue!;
-                  } else {
-                    displayText = 'Event ${widget.eventGroup!.schedules.indexOf(event) + 1}';
-                  }
+  Widget _buildVenueSelector(ColorScheme colorScheme, ThemeData theme) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceVariant.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<Event>(
+          value: _selectedEvent,
+          icon: Icon(Icons.expand_more, color: colorScheme.onSurfaceVariant),
+          isExpanded: true,
+          items:
+              widget.eventGroup!.currentSchedules.map((event) {
+                // Use only current events
+                String displayText;
+                if (event.dateFormatted.isNotEmpty && event.venue != null) {
+                  displayText = '${event.dateFormatted} • ${event.venue}';
+                } else if (event.dateFormatted.isNotEmpty) {
+                  displayText = event.dateFormatted;
+                } else if (event.venue != null) {
+                  displayText = event.venue!;
+                } else {
+                  displayText = 'Event ${widget.eventGroup!.schedules.indexOf(event) + 1}';
+                }
 
-                  return DropdownMenuItem<Event>(
-                    value: event,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          displayText,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurface,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                return DropdownMenuItem<Event>(
+                  value: event,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayText,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w500,
                         ),
-                        if (event.priceRanges?.isNotEmpty == true) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            () {
-                              final p = event.priceRanges!.first;
-                              if (p.min != null && p.max != null && p.min != p.max) {
-                                return '${p.min} – ${p.max} ${p.currency}';
-                              }
-                              final single = p.min ?? p.max;
-                              return '$single ${p.currency}';
-                            }(),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (event.priceRanges?.isNotEmpty == true) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          () {
+                            final p = event.priceRanges!.first;
+                            if (p.min != null && p.max != null && p.min != p.max) {
+                              return '${p.min} – ${p.max} ${p.currency}';
+                            }
+                            final single = p.min ?? p.max;
+                            return '$single ${p.currency}';
+                          }(),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
                           ),
-                        ],
+                        ),
                       ],
-                    ),
-                  );
-                }).toList(),
-          ),
+                    ],
+                  ),
+                );
+              }).toList(),
+          onChanged: (Event? newEvent) {
+            if (newEvent != null) {
+              setState(() {
+                _selectedEvent = newEvent;
+                // Reset quantity when switching events
+                _localQuantity = _bookingService.getBookedQuantity(_selectedEvent);
+              });
+            }
+          },
         ),
-      ],
-    ),
-  );
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -518,37 +489,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       const SizedBox(height: 24),
                     ],
 
-                    // Seat map
-                    if (event.seatMapUrl != null) ...[
-                      Text(
-                        'Seat Map',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Image.network(
-                          event.seatMapUrl!,
-                          errorBuilder:
-                              (context, error, stackTrace) => Container(
-                                height: 200,
-                                color: colorScheme.surfaceVariant,
-                                child: Center(
-                                  child: Icon(
-                                    Icons.image_not_supported,
-                                    color: colorScheme.onSurfaceVariant,
-                                    size: 48,
-                                  ),
-                                ),
-                              ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-
                     // Similar events section
                     Text(
                       S.of(context).similarEvents,
@@ -838,7 +778,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               String ctaLabel;
               bool ctaEnabled;
 
-              if (!hasExistingBooking) {
+              // Check if the selected event is expired
+              final isEventExpired = _selectedEvent.isExpired;
+
+              if (isEventExpired) {
+                ctaLabel = 'Event Expired';
+                ctaEnabled = false;
+              } else if (!hasExistingBooking) {
                 if (_localQuantity == 0) {
                   ctaLabel = 'Select tickets';
                   ctaEnabled = false;

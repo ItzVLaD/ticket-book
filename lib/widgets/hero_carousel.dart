@@ -56,7 +56,7 @@ class HeroCarousel extends StatelessWidget {
                         child: Text(group.name, style: theme.textTheme.headlineMedium),
                       ),
                     BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      filter: ImageFilter.blur(sigmaX: 5, sigmaY: 2),
                       child: Container(color: Colors.black.withOpacity(0)),
                     ),
                     Container(

@@ -16,4 +16,14 @@ class EventGroup {
   final DateTime firstDate;
   final DateTime lastDate;
   final List<Event> schedules;
+
+  // Check if this group has at least one current (non-expired) event
+  bool get hasCurrentEvents {
+    return schedules.any((event) => event.isCurrent);
+  }
+
+  // Get only the current (non-expired) events from this group
+  List<Event> get currentSchedules {
+    return schedules.where((event) => event.isCurrent).toList();
+  }
 }

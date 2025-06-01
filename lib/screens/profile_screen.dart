@@ -1,14 +1,14 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
-import 'package:tickets_booking/providers/auth_provider.dart';
-import 'package:tickets_booking/providers/wishlist_provider.dart';
-import 'package:tickets_booking/providers/theme_mode_notifier.dart';
-import 'package:tickets_booking/services/ticketmaster_service.dart';
-import 'package:tickets_booking/screens/event_detail_screen.dart';
-import 'package:tickets_booking/generated/l10n.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../generated/l10n.dart';
+import '../providers/auth_provider.dart';
+import '../providers/theme_mode_notifier.dart';
+import '../providers/wishlist_provider.dart';
+import '../services/ticketmaster_service.dart';
+import 'event_detail_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -54,7 +54,9 @@ class ProfileScreen extends StatelessWidget {
 
   Future<void> _handleDeleteAccount(BuildContext context) async {
     final user = context.read<AuthProvider>().user;
-    if (user == null) return;
+    if (user == null) {
+      return;
+    }
 
     // First confirmation dialog
     final firstConfirm = await showDialog<bool>(
@@ -124,7 +126,9 @@ class ProfileScreen extends StatelessWidget {
           ),
     );
 
-    if (firstConfirm != true) return;
+    if (firstConfirm != true) {
+      return;
+    }
 
     // Second confirmation dialog with email verification
     final secondConfirm = await showDialog<bool>(
@@ -150,18 +154,16 @@ class ProfileScreen extends StatelessWidget {
     }
   }
 
-  Widget _buildDeleteInfoItem(BuildContext context, IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: Theme.of(context).colorScheme.error),
-          const SizedBox(width: 12),
-          Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyMedium)),
-        ],
-      ),
-    );
-  }
+  Widget _buildDeleteInfoItem(BuildContext context, IconData icon, String text) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      children: [
+        Icon(icon, size: 18, color: Theme.of(context).colorScheme.error),
+        const SizedBox(width: 12),
+        Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyMedium)),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -173,10 +175,9 @@ class ProfileScreen extends StatelessWidget {
     return CustomScrollView(
       slivers: [
         SliverAppBar.medium(
-          pinned: true,
           expandedHeight: 220,
           flexibleSpace: FlexibleSpaceBar(
-            background: Container(
+            background: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -201,13 +202,12 @@ class ProfileScreen extends StatelessWidget {
                                 width: 96,
                                 height: 96,
                                 fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Icon(
-                                    Icons.person,
-                                    size: 50,
-                                    color: Theme.of(context).colorScheme.onSurface,
-                                  );
-                                },
+                                errorBuilder:
+                                    (context, error, stackTrace) => Icon(
+                                      Icons.person,
+                                      size: 50,
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                    ),
                               ),
                             )
                             : Icon(
@@ -272,7 +272,7 @@ class ProfileScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Row(
                       children: [
                         Icon(Icons.settings, color: Theme.of(context).colorScheme.primary),
@@ -327,6 +327,27 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const Divider(height: 1),
 
+                  // Sign Out Button
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.tertiaryContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.logout,
+                        color: Theme.of(context).colorScheme.onTertiaryContainer,
+                        size: 20,
+                      ),
+                    ),
+                    title: Text(S.of(context).logout),
+                    subtitle: const Text('Sign out from current account'),
+                    onTap: () => context.read<AuthProvider>().signOut(),
+                  ),
+
+                  const Divider(height: 1),
+
                   // Switch Account Button
                   Consumer<AuthProvider>(
                     builder:
@@ -360,27 +381,6 @@ class ProfileScreen extends StatelessWidget {
                           onTap:
                               authProvider.isLoading ? null : () => _handleSwitchAccount(context),
                         ),
-                  ),
-
-                  const Divider(height: 1),
-
-                  // Sign Out Button
-                  ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.tertiaryContainer,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.logout,
-                        color: Theme.of(context).colorScheme.onTertiaryContainer,
-                        size: 20,
-                      ),
-                    ),
-                    title: Text(S.of(context).logout),
-                    subtitle: const Text('Sign out from current account'),
-                    onTap: () => context.read<AuthProvider>().signOut(),
                   ),
 
                   const Divider(height: 1),
@@ -460,77 +460,74 @@ class ProfileScreen extends StatelessWidget {
 }
 
 class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.label,
+    required this.icon,
+    required this.stream,
+    this.iconColor,
+    this.countField,
+  });
+
   final String label;
   final IconData icon;
   final Color? iconColor;
   final Stream<QuerySnapshot> stream;
   final String? countField;
 
-  const _StatCard({
-    required this.label,
-    required this.icon,
-    this.iconColor,
-    required this.stream,
-    this.countField,
-  });
-
   @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: StreamBuilder<QuerySnapshot>(
-          stream: stream,
-          builder: (context, snap) {
-            final count = snap.hasData ? snap.data!.docs.length : 0;
-            return Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: (iconColor ?? Theme.of(context).colorScheme.primary).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    icon,
-                    size: 32,
-                    color: iconColor ?? Theme.of(context).colorScheme.primary,
-                  ),
+  Widget build(BuildContext context) => Card(
+    elevation: 2,
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: StreamBuilder<QuerySnapshot>(
+        stream: stream,
+        builder: (context, snap) {
+          final count = snap.hasData ? snap.data!.docs.length : 0;
+          return Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: (iconColor ?? Theme.of(context).colorScheme.primary).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  '$count',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+                child: Icon(
+                  icon,
+                  size: 32,
+                  color: iconColor ?? Theme.of(context).colorScheme.primary,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                  ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '$count',
+                style: Theme.of(
+                  context,
+                ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                 ),
-              ],
-            );
-          },
-        ),
+              ),
+            ],
+          );
+        },
       ),
-    );
-  }
+    ),
+  );
 }
 
 class _WishlistCountCard extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Consumer<WishlistProvider>(
-          builder: (context, wish, _) {
-            return Column(
+  Widget build(BuildContext context) => Card(
+    elevation: 2,
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Consumer<WishlistProvider>(
+        builder:
+            (context, wish, _) => Column(
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -555,22 +552,20 @@ class _WishlistCountCard extends StatelessWidget {
                   ),
                 ),
               ],
-            );
-          },
-        ),
+            ),
       ),
-    );
-  }
+    ),
+  );
 }
 
 class _BookingsSection extends StatelessWidget {
-  final String userId;
   const _BookingsSection({required this.userId});
+  final String userId;
 
   Future<void> _navigateToEvent(BuildContext context, String eventId) async {
     try {
       // Show loading indicator
-      showDialog(
+      await showDialog(
         context: context,
         barrierDismissible: false,
         builder: (context) => const Center(child: CircularProgressIndicator()),
@@ -586,7 +581,7 @@ class _BookingsSection extends StatelessWidget {
 
         if (event != null) {
           // Navigate to event detail screen
-          Navigator.push(
+          await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => EventDetailScreen(event: event)),
           );
@@ -612,188 +607,186 @@ class _BookingsSection extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream:
-          FirebaseFirestore.instance
-              .collection('bookings')
-              .where('userId', isEqualTo: userId)
-              .orderBy('bookedAt', descending: true)
-              .snapshots(),
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator()));
-        }
+  Widget build(BuildContext context) => StreamBuilder<QuerySnapshot>(
+    stream:
+        FirebaseFirestore.instance
+            .collection('bookings')
+            .where('userId', isEqualTo: userId)
+            .orderBy('bookedAt', descending: true)
+            .snapshots(),
+    builder: (context, snap) {
+      if (snap.connectionState == ConnectionState.waiting) {
+        return const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator()));
+      }
 
-        final docs = snap.data?.docs ?? [];
-        if (docs.isEmpty) {
-          return SliverToBoxAdapter(
-            child: Card(
-              margin: const EdgeInsets.all(16),
-              child: Padding(
-                padding: const EdgeInsets.all(40),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.event_busy,
-                      size: 64,
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(S.of(context).noBookings, style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Your booked events will appear here',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }
-
-        // Group by month-year
-        final Map<String, List<QueryDocumentSnapshot>> groups = {};
-        for (var doc in docs) {
-          final date = (doc['bookedAt'] as Timestamp).toDate();
-          final key = DateFormat.yMMMM().format(date);
-          groups.putIfAbsent(key, () => []).add(doc);
-        }
-
-        final sliverChildren =
-            groups.entries.map((entry) {
-              final month = entry.key;
-              final items = entry.value;
-
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: ExpansionTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.calendar_month,
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      size: 20,
-                    ),
+      final docs = snap.data?.docs ?? [];
+      if (docs.isEmpty) {
+        return SliverToBoxAdapter(
+          child: Card(
+            margin: const EdgeInsets.all(16),
+            child: Padding(
+              padding: const EdgeInsets.all(40),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.event_busy,
+                    size: 64,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
                   ),
-                  title: Text(
-                    month,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(
-                    '${items.length} booking${items.length == 1 ? '' : 's'}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  const SizedBox(height: 16),
+                  Text(S.of(context).noBookings, style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Your booked events will appear here',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     ),
                   ),
-                  children:
-                      items.map((doc) {
-                        final data = doc.data() as Map<String, dynamic>;
-                        final eventId = data['eventId'] as String;
-                        final eventName = data['eventName'] as String? ?? 'Unknown Event';
-                        final ticketsCount = data['ticketsCount'] as int? ?? 0;
-                        final eventDate = data['eventDate'] as String? ?? '';
+                ],
+              ),
+            ),
+          ),
+        );
+      }
 
-                        return ListTile(
-                          onTap: () => _navigateToEvent(context, eventId),
-                          leading: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.secondaryContainer,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              Icons.event,
-                              color: Theme.of(context).colorScheme.onSecondaryContainer,
-                              size: 20,
-                            ),
-                          ),
-                          title: Text(
-                            eventName,
-                            style: Theme.of(
-                              context,
-                            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '$ticketsCount ticket${ticketsCount == 1 ? '' : 's'}',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              if (eventDate.isNotEmpty)
-                                Text(
-                                  eventDate,
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.arrow_forward_ios,
-                                size: 16,
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                              ),
-                            ],
-                          ),
-                          onLongPress: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder:
-                                  (_) => AlertDialog(
-                                    title: Text(S.of(context).cancelBooking),
-                                    content: Text(S.of(context).confirmCancel),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context, false),
-                                        child: Text(S.of(context).no),
-                                      ),
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context, true),
-                                        style: TextButton.styleFrom(
-                                          foregroundColor: Theme.of(context).colorScheme.error,
-                                        ),
-                                        child: Text(S.of(context).yes),
-                                      ),
-                                    ],
-                                  ),
-                            );
-                            if (confirm == true) {
-                              await doc.reference.delete();
-                            }
-                          },
-                        );
-                      }).toList(),
+      // Group by month-year
+      final groups = <String, List<QueryDocumentSnapshot>>{};
+      for (var doc in docs) {
+        final date = (doc['bookedAt'] as Timestamp).toDate();
+        final key = DateFormat.yMMMM().format(date);
+        groups.putIfAbsent(key, () => []).add(doc);
+      }
+
+      final sliverChildren =
+          groups.entries.map((entry) {
+            final month = entry.key;
+            final items = entry.value;
+
+            return Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: ExpansionTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.calendar_month,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    size: 20,
+                  ),
                 ),
-              );
-            }).toList();
+                title: Text(
+                  month,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(
+                  '${items.length} booking${items.length == 1 ? '' : 's'}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                ),
+                children:
+                    items.map((doc) {
+                      final data = doc.data()! as Map<String, dynamic>;
+                      final eventId = data['eventId'] as String;
+                      final eventName = data['eventName'] as String? ?? 'Unknown Event';
+                      final ticketsCount = data['ticketsCount'] as int? ?? 0;
+                      final eventDate = data['eventDate'] as String? ?? '';
 
-        return SliverList(delegate: SliverChildListDelegate(sliverChildren));
-      },
-    );
-  }
+                      return ListTile(
+                        onTap: () => _navigateToEvent(context, eventId),
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.secondaryContainer,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.event,
+                            color: Theme.of(context).colorScheme.onSecondaryContainer,
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(
+                          eventName,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '$ticketsCount ticket${ticketsCount == 1 ? '' : 's'}',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            if (eventDate.isNotEmpty)
+                              Text(
+                                eventDate,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                ),
+                              ),
+                          ],
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                            ),
+                          ],
+                        ),
+                        onLongPress: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder:
+                                (_) => AlertDialog(
+                                  title: Text(S.of(context).cancelBooking),
+                                  content: Text(S.of(context).confirmCancel),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: Text(S.of(context).no),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, true),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Theme.of(context).colorScheme.error,
+                                      ),
+                                      child: Text(S.of(context).yes),
+                                    ),
+                                  ],
+                                ),
+                          );
+                          if (confirm == true) {
+                            await doc.reference.delete();
+                          }
+                        },
+                      );
+                    }).toList(),
+              ),
+            );
+          }).toList();
+
+      return SliverList(delegate: SliverChildListDelegate(sliverChildren));
+    },
+  );
 }
 
 class _DeleteAccountDialog extends StatefulWidget {
-  final User user;
-
   const _DeleteAccountDialog({required this.user});
+
+  final User user;
 
   @override
   _DeleteAccountDialogState createState() => _DeleteAccountDialogState();

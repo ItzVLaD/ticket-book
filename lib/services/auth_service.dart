@@ -13,7 +13,10 @@ class AuthService {
 
     final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-    final credential = GoogleAuthProvider.credential(accessToken: googleAuth.accessToken, idToken: googleAuth.idToken);
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
 
     UserCredential userCredential = await _auth.signInWithCredential(credential);
 
@@ -35,7 +38,7 @@ class AuthService {
 
     // Sign out from Google first
     await _googleSignIn.signOut();
-    
+
     // Delete the Firebase Auth account
     await user.delete();
   }
@@ -44,7 +47,7 @@ class AuthService {
   Future<User?> switchAccount() async {
     // Sign out from current account
     await signOut();
-    
+
     // Trigger new Google sign in
     return await signInWithGoogle();
   }

@@ -55,17 +55,17 @@ class UserService {
 
   Future<List<String>> getWishlist(String userId) async {
     final snapshot = await usersCollection.doc(userId).get();
-    
+
     // Check if document exists
     if (!snapshot.exists) {
       return <String>[];
     }
-    
+
     final data = snapshot.data() as Map<String, dynamic>?;
     if (data == null || !data.containsKey('wishlist') || data['wishlist'] == null) {
       return <String>[];
     }
-    
+
     final wishlist = data['wishlist'] as List<dynamic>;
     return wishlist.cast<String>();
   }
@@ -73,20 +73,21 @@ class UserService {
   // Delete all user data from Firestore
   Future<void> deleteUserData(String userId) async {
     final batch = FirebaseFirestore.instance.batch();
-    
+
     // Delete user document
     batch.delete(usersCollection.doc(userId));
-    
+
     // Delete all user bookings
-    final bookingsQuery = await FirebaseFirestore.instance
-        .collection('bookings')
-        .where('userId', isEqualTo: userId)
-        .get();
-    
+    final bookingsQuery =
+        await FirebaseFirestore.instance
+            .collection('bookings')
+            .where('userId', isEqualTo: userId)
+            .get();
+
     for (var doc in bookingsQuery.docs) {
       batch.delete(doc.reference);
     }
-    
+
     // Execute batch delete
     await batch.commit();
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:tickets_booking/providers/auth_provider.dart';
 import 'package:tickets_booking/providers/wishlist_provider.dart';
 import 'package:tickets_booking/providers/theme_mode_notifier.dart';
@@ -11,6 +12,156 @@ import 'package:intl/intl.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
+
+  Future<void> _handleSwitchAccount(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Switch Account'),
+            content: const Text(
+              'Do you want to switch to a different Google account? You will be signed out from the current account.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Switch Account'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      try {
+        await context.read<AuthProvider>().switchAccount();
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to switch account: ${e.toString()}'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _handleDeleteAccount(BuildContext context) async {
+    final user = context.read<AuthProvider>().user;
+    if (user == null) return;
+
+    // First confirmation dialog
+    final firstConfirm = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error),
+                const SizedBox(width: 8),
+                const Text('Delete Account'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('This action will permanently delete:'),
+                const SizedBox(height: 12),
+                _buildDeleteInfoItem(context, Icons.person, 'Your account profile'),
+                _buildDeleteInfoItem(context, Icons.confirmation_number, 'All your bookings'),
+                _buildDeleteInfoItem(context, Icons.favorite, 'Your wishlist'),
+                _buildDeleteInfoItem(context, Icons.storage, 'All associated data'),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: Theme.of(context).colorScheme.error,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'This action cannot be undone!',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError,
+                ),
+                child: const Text('Continue'),
+              ),
+            ],
+          ),
+    );
+
+    if (firstConfirm != true) return;
+
+    // Second confirmation dialog with email verification
+    final secondConfirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => _DeleteAccountDialog(user: user),
+    );
+
+    if (secondConfirm == true && context.mounted) {
+      try {
+        await context.read<AuthProvider>().deleteAccount();
+        // User will be automatically signed out and redirected to auth screen
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete account: ${e.toString()}'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Widget _buildDeleteInfoItem(BuildContext context, IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: Theme.of(context).colorScheme.error),
+          const SizedBox(width: 12),
+          Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyMedium)),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,27 +193,28 @@ class ProfileScreen extends StatelessWidget {
                   CircleAvatar(
                     radius: 50,
                     backgroundColor: Theme.of(context).colorScheme.surface,
-                    child: user.photoURL != null
-                        ? ClipOval(
-                            child: Image.network(
-                              user.photoURL!,
-                              width: 96,
-                              height: 96,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Icon(
-                                  Icons.person,
-                                  size: 50,
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                );
-                              },
+                    child:
+                        user.photoURL != null
+                            ? ClipOval(
+                              child: Image.network(
+                                user.photoURL!,
+                                width: 96,
+                                height: 96,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(
+                                    Icons.person,
+                                    size: 50,
+                                    color: Theme.of(context).colorScheme.onSurface,
+                                  );
+                                },
+                              ),
+                            )
+                            : Icon(
+                              Icons.person,
+                              size: 50,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
-                          )
-                        : Icon(
-                            Icons.person,
-                            size: 50,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -84,7 +236,7 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
         ),
-        
+
         // Statistics Cards
         SliverPadding(
           padding: const EdgeInsets.all(16),
@@ -96,10 +248,11 @@ class ProfileScreen extends StatelessWidget {
                     label: 'Bookings',
                     icon: Icons.confirmation_number,
                     iconColor: Theme.of(context).colorScheme.primary,
-                    stream: FirebaseFirestore.instance
-                        .collection('bookings')
-                        .where('userId', isEqualTo: user.uid)
-                        .snapshots(),
+                    stream:
+                        FirebaseFirestore.instance
+                            .collection('bookings')
+                            .where('userId', isEqualTo: user.uid)
+                            .snapshots(),
                     countField: null,
                   ),
                 ),
@@ -122,104 +275,184 @@ class ProfileScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(16),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.settings,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
+                        Icon(Icons.settings, color: Theme.of(context).colorScheme.primary),
                         const SizedBox(width: 12),
                         Text(
                           'Settings',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
                   ),
                   const Divider(height: 1),
                   Consumer<ThemeModeNotifier>(
-                    builder: (context, theme, _) => ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(8),
+                    builder:
+                        (context, theme, _) => ListTile(
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.brightness_6,
+                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                              size: 20,
+                            ),
+                          ),
+                          title: Text(S.of(context).theme),
+                          subtitle: Text('Current: ${theme.mode.name.capitalize()}'),
+                          trailing: DropdownButton<ThemeMode>(
+                            value: theme.mode,
+                            items:
+                                ThemeMode.values
+                                    .map(
+                                      (mode) => DropdownMenuItem(
+                                        value: mode,
+                                        child: Text(mode.name.capitalize()),
+                                      ),
+                                    )
+                                    .toList(),
+                            onChanged: (mode) {
+                              if (mode != null) {
+                                context.read<ThemeModeNotifier>().setMode(mode);
+                              }
+                            },
+                            underline: const SizedBox.shrink(),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
-                        child: Icon(
-                          Icons.brightness_6,
-                          color: Theme.of(context).colorScheme.onPrimaryContainer,
-                          size: 20,
-                        ),
-                      ),
-                      title: Text(S.of(context).theme),
-                      subtitle: Text('Current: ${theme.mode.name.capitalize()}'),
-                      trailing: DropdownButton<ThemeMode>(
-                        value: theme.mode,
-                        items: ThemeMode.values
-                            .map(
-                              (mode) => DropdownMenuItem(
-                                value: mode,
-                                child: Text(mode.name.capitalize()),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (mode) {
-                          if (mode != null) {
-                            context.read<ThemeModeNotifier>().setMode(mode);
-                          }
-                        },
-                        underline: const SizedBox.shrink(),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
                   ),
+                  const Divider(height: 1),
+
+                  // Switch Account Button
+                  Consumer<AuthProvider>(
+                    builder:
+                        (context, authProvider, _) => ListTile(
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.secondaryContainer,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.switch_account,
+                              color: Theme.of(context).colorScheme.onSecondaryContainer,
+                              size: 20,
+                            ),
+                          ),
+                          title: const Text('Switch Account'),
+                          subtitle: const Text('Sign in with a different Google account'),
+                          trailing:
+                              authProvider.isLoading
+                                  ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                  : Icon(
+                                    Icons.arrow_forward_ios,
+                                    size: 16,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                                  ),
+                          onTap:
+                              authProvider.isLoading ? null : () => _handleSwitchAccount(context),
+                        ),
+                  ),
+
+                  const Divider(height: 1),
+
+                  // Sign Out Button
                   ListTile(
                     leading: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.errorContainer,
+                        color: Theme.of(context).colorScheme.tertiaryContainer,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
                         Icons.logout,
-                        color: Theme.of(context).colorScheme.onErrorContainer,
+                        color: Theme.of(context).colorScheme.onTertiaryContainer,
                         size: 20,
                       ),
                     ),
                     title: Text(S.of(context).logout),
+                    subtitle: const Text('Sign out from current account'),
                     onTap: () => context.read<AuthProvider>().signOut(),
+                  ),
+
+                  const Divider(height: 1),
+
+                  // Delete Account Button
+                  Consumer<AuthProvider>(
+                    builder:
+                        (context, authProvider, _) => ListTile(
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.errorContainer,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.delete_forever,
+                              color: Theme.of(context).colorScheme.onErrorContainer,
+                              size: 20,
+                            ),
+                          ),
+                          title: Text(
+                            'Delete Account',
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          subtitle: const Text('Permanently delete your account and all data'),
+                          trailing:
+                              authProvider.isLoading
+                                  ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                  : Icon(
+                                    Icons.arrow_forward_ios,
+                                    size: 16,
+                                    color: Theme.of(context).colorScheme.error.withOpacity(0.7),
+                                  ),
+                          onTap:
+                              authProvider.isLoading ? null : () => _handleDeleteAccount(context),
+                        ),
                   ),
                 ],
               ),
             ),
           ),
         ),
-        
+
         const SliverToBoxAdapter(child: SizedBox(height: 24)),
-        
+
         // Bookings Section
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                Icon(
-                  Icons.history,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+                Icon(Icons.history, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 12),
                 Text(
                   S.of(context).yourBookings,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
           ),
         ),
         _BookingsSection(userId: user.uid),
-        
+
         const SliverToBoxAdapter(child: SizedBox(height: 80)),
       ],
     );
@@ -232,7 +465,7 @@ class _StatCard extends StatelessWidget {
   final Color? iconColor;
   final Stream<QuerySnapshot> stream;
   final String? countField;
-  
+
   const _StatCard({
     required this.label,
     required this.icon,
@@ -256,8 +489,7 @@ class _StatCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: (iconColor ?? Theme.of(context).colorScheme.primary)
-                        .withOpacity(0.1),
+                    color: (iconColor ?? Theme.of(context).colorScheme.primary).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -269,9 +501,9 @@ class _StatCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text(
                   '$count',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -306,18 +538,14 @@ class _WishlistCountCard extends StatelessWidget {
                     color: Colors.red.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(
-                    Icons.favorite,
-                    size: 32,
-                    color: Colors.red,
-                  ),
+                  child: const Icon(Icons.favorite, size: 32, color: Colors.red),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   '${wish.wishlist.length}',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -345,9 +573,7 @@ class _BookingsSection extends StatelessWidget {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
-        ),
+        builder: (context) => const Center(child: CircularProgressIndicator()),
       );
 
       // Fetch event details
@@ -362,9 +588,7 @@ class _BookingsSection extends StatelessWidget {
           // Navigate to event detail screen
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => EventDetailScreen(event: event),
-            ),
+            MaterialPageRoute(builder: (_) => EventDetailScreen(event: event)),
           );
         } else {
           // Show error if event not found
@@ -381,10 +605,7 @@ class _BookingsSection extends StatelessWidget {
       if (context.mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load event: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Failed to load event: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -393,18 +614,17 @@ class _BookingsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('bookings')
-          .where('userId', isEqualTo: userId)
-          .orderBy('bookedAt', descending: true)
-          .snapshots(),
+      stream:
+          FirebaseFirestore.instance
+              .collection('bookings')
+              .where('userId', isEqualTo: userId)
+              .orderBy('bookedAt', descending: true)
+              .snapshots(),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
-          return const SliverToBoxAdapter(
-            child: Center(child: CircularProgressIndicator()),
-          );
+          return const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator()));
         }
-        
+
         final docs = snap.data?.docs ?? [];
         if (docs.isEmpty) {
           return SliverToBoxAdapter(
@@ -420,10 +640,7 @@ class _BookingsSection extends StatelessWidget {
                       color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
                     ),
                     const SizedBox(height: 16),
-                    Text(
-                      S.of(context).noBookings,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
+                    Text(S.of(context).noBookings, style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
                     Text(
                       'Your booked events will appear here',
@@ -446,130 +663,234 @@ class _BookingsSection extends StatelessWidget {
           groups.putIfAbsent(key, () => []).add(doc);
         }
 
-        final sliverChildren = groups.entries.map((entry) {
-          final month = entry.key;
-          final items = entry.value;
-          
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: ExpansionTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.calendar_month,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                  size: 20,
-                ),
-              ),
-              title: Text(
-                month,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              subtitle: Text(
-                '${items.length} booking${items.length == 1 ? '' : 's'}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                ),
-              ),
-              children: items.map((doc) {
-                final data = doc.data() as Map<String, dynamic>;
-                final eventId = data['eventId'] as String;
-                final eventName = data['eventName'] as String? ?? 'Unknown Event';
-                final ticketsCount = data['ticketsCount'] as int? ?? 0;
-                final eventDate = data['eventDate'] as String? ?? '';
+        final sliverChildren =
+            groups.entries.map((entry) {
+              final month = entry.key;
+              final items = entry.value;
 
-                return ListTile(
-                  onTap: () => _navigateToEvent(context, eventId),
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: ExpansionTile(
                   leading: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.secondaryContainer,
+                      color: Theme.of(context).colorScheme.primaryContainer,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
-                      Icons.event,
-                      color: Theme.of(context).colorScheme.onSecondaryContainer,
+                      Icons.calendar_month,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
                       size: 20,
                     ),
                   ),
                   title: Text(
-                    eventName,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
+                    month,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    '${items.length} booking${items.length == 1 ? '' : 's'}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     ),
                   ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '$ticketsCount ticket${ticketsCount == 1 ? '' : 's'}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      if (eventDate.isNotEmpty)
-                        Text(
-                          eventDate,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                          ),
-                        ),
-                    ],
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.arrow_forward_ios,
-                        size: 16,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                      ),
-                    ],
-                  ),
-                  onLongPress: () async {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (_) => AlertDialog(
-                        title: Text(S.of(context).cancelBooking),
-                        content: Text(S.of(context).confirmCancel),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: Text(S.of(context).no),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            style: TextButton.styleFrom(
-                              foregroundColor: Theme.of(context).colorScheme.error,
-                            ),
-                            child: Text(S.of(context).yes),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirm == true) {
-                      await doc.reference.delete();
-                    }
-                  },
-                );
-              }).toList(),
-            ),
-          );
-        }).toList();
+                  children:
+                      items.map((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        final eventId = data['eventId'] as String;
+                        final eventName = data['eventName'] as String? ?? 'Unknown Event';
+                        final ticketsCount = data['ticketsCount'] as int? ?? 0;
+                        final eventDate = data['eventDate'] as String? ?? '';
 
-        return SliverList(
-          delegate: SliverChildListDelegate(sliverChildren),
-        );
+                        return ListTile(
+                          onTap: () => _navigateToEvent(context, eventId),
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.secondaryContainer,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.event,
+                              color: Theme.of(context).colorScheme.onSecondaryContainer,
+                              size: 20,
+                            ),
+                          ),
+                          title: Text(
+                            eventName,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '$ticketsCount ticket${ticketsCount == 1 ? '' : 's'}',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              if (eventDate.isNotEmpty)
+                                Text(
+                                  eventDate,
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                              ),
+                            ],
+                          ),
+                          onLongPress: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder:
+                                  (_) => AlertDialog(
+                                    title: Text(S.of(context).cancelBooking),
+                                    content: Text(S.of(context).confirmCancel),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context, false),
+                                        child: Text(S.of(context).no),
+                                      ),
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context, true),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Theme.of(context).colorScheme.error,
+                                        ),
+                                        child: Text(S.of(context).yes),
+                                      ),
+                                    ],
+                                  ),
+                            );
+                            if (confirm == true) {
+                              await doc.reference.delete();
+                            }
+                          },
+                        );
+                      }).toList(),
+                ),
+              );
+            }).toList();
+
+        return SliverList(delegate: SliverChildListDelegate(sliverChildren));
       },
     );
   }
+}
+
+class _DeleteAccountDialog extends StatefulWidget {
+  final User user;
+
+  const _DeleteAccountDialog({required this.user});
+
+  @override
+  _DeleteAccountDialogState createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
+  final TextEditingController _controller = TextEditingController();
+  bool _isConfirmationValid = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Final Confirmation'),
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Please confirm that you want to delete the account for:',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceVariant,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundImage:
+                    widget.user.photoURL != null ? NetworkImage(widget.user.photoURL!) : null,
+                child: widget.user.photoURL == null ? const Icon(Icons.person, size: 16) : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.user.displayName ?? 'No Name',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      widget.user.email ?? '',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Type "DELETE" to confirm:',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _controller,
+          decoration: InputDecoration(
+            hintText: 'Type DELETE here',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          onChanged: (value) {
+            setState(() {
+              _isConfirmationValid = value.trim().toUpperCase() == 'DELETE';
+            });
+          },
+        ),
+      ],
+    ),
+    actions: [
+      TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+      FilledButton(
+        onPressed: _isConfirmationValid ? () => Navigator.of(context).pop(true) : null,
+        style: FilledButton.styleFrom(
+          backgroundColor: Theme.of(context).colorScheme.error,
+          foregroundColor: Theme.of(context).colorScheme.onError,
+        ),
+        child: const Text('Delete Account'),
+      ),
+    ],
+  );
 }
 
 extension StringExt on String {

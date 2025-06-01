@@ -30,20 +30,64 @@ class UserService {
   }
 
   Future<void> addToWishlist(String userId, String eventId) async {
-    await usersCollection.doc(userId).update({
-      'wishlist': FieldValue.arrayUnion([eventId]),
-    });
+    try {
+      await usersCollection.doc(userId).update({
+        'wishlist': FieldValue.arrayUnion([eventId]),
+      });
+    } catch (e) {
+      // If document doesn't exist, create it with the wishlist
+      await usersCollection.doc(userId).set({
+        'wishlist': [eventId],
+      }, SetOptions(merge: true));
+    }
   }
 
   Future<void> removeFromWishlist(String userId, String eventId) async {
-    await usersCollection.doc(userId).update({
-      'wishlist': FieldValue.arrayRemove([eventId]),
-    });
+    try {
+      await usersCollection.doc(userId).update({
+        'wishlist': FieldValue.arrayRemove([eventId]),
+      });
+    } catch (e) {
+      // If document doesn't exist, ignore the operation
+      // since there's nothing to remove
+    }
   }
 
   Future<List<String>> getWishlist(String userId) async {
     final snapshot = await usersCollection.doc(userId).get();
-    final wishlist = snapshot['wishlist'] as List<dynamic>;
+    
+    // Check if document exists
+    if (!snapshot.exists) {
+      return <String>[];
+    }
+    
+    final data = snapshot.data() as Map<String, dynamic>?;
+    if (data == null || !data.containsKey('wishlist') || data['wishlist'] == null) {
+      return <String>[];
+    }
+    
+    final wishlist = data['wishlist'] as List<dynamic>;
     return wishlist.cast<String>();
+  }
+
+  // Delete all user data from Firestore
+  Future<void> deleteUserData(String userId) async {
+    final batch = FirebaseFirestore.instance.batch();
+    
+    // Delete user document
+    batch.delete(usersCollection.doc(userId));
+    
+    // Delete all user bookings
+    final bookingsQuery = await FirebaseFirestore.instance
+        .collection('bookings')
+        .where('userId', isEqualTo: userId)
+        .get();
+    
+    for (var doc in bookingsQuery.docs) {
+      batch.delete(doc.reference);
+    }
+    
+    // Execute batch delete
+    await batch.commit();
   }
 }

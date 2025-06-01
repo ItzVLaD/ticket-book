@@ -6,7 +6,9 @@ import 'package:tickets_booking/models/event.dart';
 import 'package:tickets_booking/screens/event_detail_screen.dart';
 
 class WishlistScreen extends StatefulWidget {
-  const WishlistScreen({super.key});
+  final VoidCallback? onNavigateToHome;
+  
+  const WishlistScreen({super.key, this.onNavigateToHome});
 
   @override
   WishlistScreenState createState() => WishlistScreenState();
@@ -335,8 +337,12 @@ class WishlistScreenState extends State<WishlistScreen> {
             const SizedBox(height: 32),
             FilledButton.icon(
               onPressed: () {
-                // Navigate to home/search screen
-                Navigator.pop(context);
+                // Navigate to home tab if callback is available, otherwise pop
+                if (widget.onNavigateToHome != null) {
+                  widget.onNavigateToHome!();
+                } else {
+                  Navigator.pop(context);
+                }
               },
               icon: const Icon(Icons.explore),
               label: const Text('Explore Events'),

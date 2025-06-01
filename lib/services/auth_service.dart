@@ -26,6 +26,29 @@ class AuthService {
     await _auth.signOut();
   }
 
+  // Delete account completely
+  Future<void> deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('No user is currently signed in');
+    }
+
+    // Sign out from Google first
+    await _googleSignIn.signOut();
+    
+    // Delete the Firebase Auth account
+    await user.delete();
+  }
+
+  // Switch account (sign out and trigger new sign in)
+  Future<User?> switchAccount() async {
+    // Sign out from current account
+    await signOut();
+    
+    // Trigger new Google sign in
+    return await signInWithGoogle();
+  }
+
   // Поточний користувач
   User? get currentUser => _auth.currentUser;
 

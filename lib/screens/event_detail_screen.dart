@@ -32,7 +32,24 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedEvent = widget.event; // Initialize with the passed event
+    // Ensure _selectedEvent is always from currentSchedules if we have an eventGroup
+    if (widget.eventGroup != null && widget.eventGroup!.currentSchedules.isNotEmpty) {
+      // Try to find the passed event in currentSchedules first
+      Event? currentEvent;
+      try {
+        currentEvent = widget.eventGroup!.currentSchedules
+            .firstWhere((e) => e.id == widget.event.id);
+      } catch (e) {
+        // Event not found in currentSchedules
+        currentEvent = null;
+      }
+      
+      // If the passed event is current, use it; otherwise use the first current event
+      _selectedEvent = currentEvent ?? widget.eventGroup!.currentSchedules.first;
+    } else {
+      // No eventGroup or no current schedules, use the passed event
+      _selectedEvent = widget.event;
+    }
   }
 
   // Venue selector widget for grouped events
@@ -46,60 +63,61 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
       ),
       child: DropdownButtonHideUnderline(
-        child: DropdownButton<Event>(
-          value: _selectedEvent,
+        child: DropdownButton<String>(
+          value: _selectedEvent.id,
           icon: Icon(Icons.expand_more, color: colorScheme.onSurfaceVariant),
           isExpanded: true,
-          items:
-              widget.eventGroup!.currentSchedules.map((event) {
-                // Use only current events
-                String displayText;
-                if (event.dateFormatted.isNotEmpty && event.venue != null) {
-                  displayText = '${event.dateFormatted} • ${event.venue}';
-                } else if (event.dateFormatted.isNotEmpty) {
-                  displayText = event.dateFormatted;
-                } else if (event.venue != null) {
-                  displayText = event.venue!;
-                } else {
-                  displayText = 'Event ${widget.eventGroup!.schedules.indexOf(event) + 1}';
-                }
+          items: widget.eventGroup!.currentSchedules.map((event) {
+            // Use only current events
+            String displayText;
+            if (event.dateFormatted.isNotEmpty && event.venue != null) {
+              displayText = '${event.dateFormatted} • ${event.venue}';
+            } else if (event.dateFormatted.isNotEmpty) {
+              displayText = event.dateFormatted;
+            } else if (event.venue != null) {
+              displayText = event.venue!;
+            } else {
+              displayText = 'Event ${widget.eventGroup!.schedules.indexOf(event) + 1}';
+            }
 
-                return DropdownMenuItem<Event>(
-                  value: event,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        displayText,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurface,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (event.priceRanges?.isNotEmpty == true) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          () {
-                            final p = event.priceRanges!.first;
-                            if (p.min != null && p.max != null && p.min != p.max) {
-                              return '${p.min} – ${p.max} ${p.currency}';
-                            }
-                            final single = p.min ?? p.max;
-                            return '$single ${p.currency}';
-                          }(),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ],
+            return DropdownMenuItem<String>(
+              value: event.id,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    displayText,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                );
-              }).toList(),
-          onChanged: (Event? newEvent) {
-            if (newEvent != null) {
+                  if (event.priceRanges?.isNotEmpty == true) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      () {
+                        final p = event.priceRanges!.first;
+                        if (p.min != null && p.max != null && p.min != p.max) {
+                          return '${p.min} – ${p.max} ${p.currency}';
+                        }
+                        final single = p.min ?? p.max;
+                        return '$single ${p.currency}';
+                      }(),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }).toList(),
+          onChanged: (String? newEventId) {
+            if (newEventId != null) {
+              final newEvent = widget.eventGroup!.currentSchedules
+                  .firstWhere((event) => event.id == newEventId);
               setState(() {
                 _selectedEvent = newEvent;
                 // Reset quantity when switching events
@@ -109,6 +127,39 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           },
         ),
       ),
+    );
+  }
+
+  // Launch URL in the default browser
+  void _launchEventURL(String url) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Visit Event Site'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Open this URL in your browser:'),
+              const SizedBox(height: 8),
+              SelectableText(
+                url,
+                style: const TextStyle(
+                  color: Colors.blue,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -212,24 +263,19 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             onPressed: () => wishlist.toggleWishlist(event.id),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(12),
+                        if (event.url != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.open_in_new, color: Colors.white),
+                              onPressed: () => _launchEventURL(event.url!),
+                            ),
                           ),
-                          child: IconButton(
-                            icon: const Icon(Icons.share, color: Colors.white),
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(S.of(context).shareFeatureComingSoon),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
@@ -262,7 +308,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     const SizedBox(height: 16),
 
                     // Venue/Date Selection Dropdown for Grouped Events
-                    if (widget.eventGroup != null && widget.eventGroup!.schedules.length > 1) ...[
+                    if (widget.eventGroup != null && widget.eventGroup!.currentSchedules.length > 1) ...[
                       _buildVenueSelector(colorScheme, theme),
                       const SizedBox(height: 16),
                     ],

@@ -56,6 +56,49 @@ class Event {
     final images = (json['images'] as List?) ?? [];
     final imageUrl = images.isNotEmpty ? images[0]['url'] as String? : null;
     final venues = (json['_embedded']?['venues'] as List?) ?? [];
+    
+    // Extract venue and location information
+    String? venueName;
+    String? cityName;
+    String? stateName; 
+    String? countryName;
+    
+    if (venues.isNotEmpty) {
+      final venue = venues[0] as Map<String, dynamic>;
+      venueName = venue['name'] as String?;
+      
+      // Extract city information
+      final city = venue['city'] as Map<String, dynamic>?;
+      if (city != null) {
+        cityName = city['name'] as String?;
+      }
+      
+      // Extract state information  
+      final state = venue['state'] as Map<String, dynamic>?;
+      if (state != null) {
+        stateName = state['name'] as String?;
+      }
+      
+      // Extract country information
+      final country = venue['country'] as Map<String, dynamic>?;
+      if (country != null) {
+        countryName = country['name'] as String?;
+      }
+    }
+    
+    // Build city string with available location info
+    String? fullCityLocation;
+    if (cityName != null) {
+      final locationParts = <String>[cityName];
+      if (stateName != null) {
+        locationParts.add(stateName);
+      }
+      if (countryName != null) {
+        locationParts.add(countryName);
+      }
+      fullCityLocation = locationParts.join(', ');
+    }
+    
     final dateString = json['dates']?['start']?['localDate'] as String?;
     DateTime? parsedDate;
     if (dateString != null) {
@@ -74,7 +117,8 @@ class Event {
       name: json['name'] as String,
       description: json['info'] as String?,
       imageUrl: imageUrl,
-      venue: venues.isNotEmpty ? venues[0]['name'] as String? : null,
+      venue: venueName,
+      city: fullCityLocation,
       date: parsedDate,
       totalTickets: 100,
       seriesId: seriesId,

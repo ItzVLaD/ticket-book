@@ -310,77 +310,174 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     // Venue/Date Selection Dropdown for Grouped Events
                     if (widget.eventGroup != null && widget.eventGroup!.currentSchedules.length > 1) ...[
                       _buildVenueSelector(colorScheme, theme),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
                     ],
 
-                    // Date and venue info cards (now showing _selectedEvent instead of event)
-                    Row(
-                      children: [
-                        if (_selectedEvent.dateFormatted.isNotEmpty) ...[
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: colorScheme.primaryContainer,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
+                    // Event Information Section - Reorganized for better UI
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            colorScheme.surfaceVariant.withOpacity(0.3),
+                            colorScheme.surfaceVariant.withOpacity(0.1),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: colorScheme.outline.withOpacity(0.1)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Section title
+                          Text(
+                            'Event Details',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          
+                          // Date and Time row
+                          if (_selectedEvent.dateFormatted.isNotEmpty) ...[
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.primaryContainer,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
                                     Icons.calendar_today,
                                     color: colorScheme.onPrimaryContainer,
-                                    size: 20,
+                                    size: 18,
                                   ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      _selectedEvent.dateFormatted,
-                                      style: theme.textTheme.bodyMedium?.copyWith(
-                                        color: colorScheme.onPrimaryContainer,
-                                        fontWeight: FontWeight.w500,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Date',
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: colorScheme.onSurfaceVariant,
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                       ),
-                                    ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _selectedEvent.dateFormatted,
+                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                          color: colorScheme.onSurface,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
-                        if (_selectedEvent.venue != null && _selectedEvent.dateFormatted.isNotEmpty)
-                          const SizedBox(width: 12),
-                        if (_selectedEvent.venue != null) ...[
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: colorScheme.secondaryContainer,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
+                            const SizedBox(height: 16),
+                          ],
+                          
+                          // Venue row
+                          if (_selectedEvent.venue != null) ...[
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.secondaryContainer,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
                                     Icons.location_on,
                                     color: colorScheme.onSecondaryContainer,
-                                    size: 20,
+                                    size: 18,
                                   ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      _selectedEvent.venue!,
-                                      style: theme.textTheme.bodyMedium?.copyWith(
-                                        color: colorScheme.onSecondaryContainer,
-                                        fontWeight: FontWeight.w500,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Venue',
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: colorScheme.onSurfaceVariant,
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                       ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _selectedEvent.venue!,
+                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                          color: colorScheme.onSurface,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ),
+                            if (_selectedEvent.city != null && _selectedEvent.city!.isNotEmpty)
+                              const SizedBox(height: 16),
+                          ],
+                          
+                          // Location row (City/Country)
+                          if (_selectedEvent.city != null && _selectedEvent.city!.isNotEmpty) ...[
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.tertiaryContainer,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    Icons.public,
+                                    color: colorScheme.onTertiaryContainer,
+                                    size: 18,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Location',
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: colorScheme.onSurfaceVariant,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _selectedEvent.city!,
+                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                          color: colorScheme.onSurface,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                     const SizedBox(height: 24),
 

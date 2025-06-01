@@ -29,18 +29,53 @@ class AuthService {
     await _auth.signOut();
   }
 
-  // Delete account completely
+  // Re-authenticate user with Google (required for sensitive operations)
+  Future<void> reauthenticateWithGoogle() async {
+    final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+    
+    if (googleUser == null) {
+      throw Exception('Re-authentication cancelled by user');
+    }
+
+    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('No user is currently signed in');
+    }
+
+    // Re-authenticate the user
+    await user.reauthenticateWithCredential(credential);
+  }
+
+  // Delete account completely with re-authentication
   Future<void> deleteAccount() async {
     final user = _auth.currentUser;
     if (user == null) {
       throw Exception('No user is currently signed in');
     }
 
-    // Sign out from Google first
-    await _googleSignIn.signOut();
-
-    // Delete the Firebase Auth account
-    await user.delete();
+    try {
+      // Try to delete the account directly first
+      await user.delete();
+    } catch (e) {
+      // If it fails due to recent login requirement, re-authenticate and try again
+      if (e is FirebaseAuthException && e.code == 'requires-recent-login') {
+        // Re-authenticate with Google
+        await reauthenticateWithGoogle();
+        
+        // Try deleting again after re-authentication
+        await user.delete();
+      } else {
+        // Re-throw other errors
+        rethrow;
+      }
+    }
   }
 
   // Switch account (sign out and trigger new sign in)

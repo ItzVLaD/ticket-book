@@ -58,11 +58,12 @@ class AuthProvider extends ChangeNotifier {
     try {
       final userId = _user!.uid;
 
-      // First delete all user data from Firestore
-      await _userService.deleteUserData(userId);
-
-      // Then delete the Firebase Auth account
+      // First try to delete the Firebase Auth account
+      // This will handle re-authentication if needed
       await _authService.deleteAccount();
+
+      // Only delete Firestore data after successful auth account deletion
+      await _userService.deleteUserData(userId);
 
       // User state will be automatically updated through auth state changes
     } catch (e) {

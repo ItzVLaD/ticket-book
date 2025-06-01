@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../generated/l10n.dart';
+import '../models/event.dart';
 import '../providers/auth_provider.dart';
+import '../providers/event_provider.dart';
 import '../providers/theme_mode_notifier.dart';
 import '../providers/wishlist_provider.dart';
 import '../services/ticketmaster_service.dart';
@@ -564,16 +566,45 @@ class _BookingsSection extends StatelessWidget {
 
   Future<void> _navigateToEvent(BuildContext context, String eventId) async {
     try {
+      // First, check if the event exists in the local cache
+      final eventsProvider = context.read<EventsProvider>();
+      Event? event;
+
+      // Search in flat events list
+      try {
+        event = eventsProvider.events.firstWhere((e) => e.id == eventId);
+      } catch (_) {
+        // Not found in flat list, search in grouped events
+        for (final group in eventsProvider.groupedEvents) {
+          try {
+            event = group.schedules.firstWhere((e) => e.id == eventId);
+            break;
+          } catch (_) {
+            // Continue searching in other groups
+          }
+        }
+      }
+
+      // If found in cache, navigate directly without API call
+      if (event != null) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => EventDetailScreen(event: event!)),
+        );
+        return;
+      }
+
+      // Only make API call if event not found in cache
       // Show loading indicator
-      await showDialog(
+      showDialog(
         context: context,
         barrierDismissible: false,
         builder: (context) => const Center(child: CircularProgressIndicator()),
       );
 
-      // Fetch event details
+      // Fetch event details from API as fallback
       final ticketmasterService = TicketmasterService();
-      final event = await ticketmasterService.fetchEventById(eventId);
+      event = await ticketmasterService.fetchEventById(eventId);
 
       // Hide loading indicator
       if (context.mounted) {
@@ -583,7 +614,7 @@ class _BookingsSection extends StatelessWidget {
           // Navigate to event detail screen
           await Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => EventDetailScreen(event: event)),
+            MaterialPageRoute(builder: (_) => EventDetailScreen(event: event!)),
           );
         } else {
           // Show error if event not found

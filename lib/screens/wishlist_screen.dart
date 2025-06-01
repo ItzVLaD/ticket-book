@@ -6,9 +6,9 @@ import '../providers/wishlist_provider.dart';
 import 'event_detail_screen.dart';
 
 class WishlistScreen extends StatefulWidget {
-  final VoidCallback? onNavigateToHome;
-
   const WishlistScreen({super.key, this.onNavigateToHome});
+
+  final VoidCallback? onNavigateToHome;
 
   @override
   WishlistScreenState createState() => WishlistScreenState();
@@ -53,90 +53,93 @@ class WishlistScreenState extends State<WishlistScreen> {
     context.read<WishlistProvider>().toggleWishlist(eventId);
   }
 
-  Widget _buildItem(Event event) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Dismissible(
-        key: ValueKey(event.id),
-        direction: DismissDirection.startToEnd,
-        onDismissed: (_) => _removeItem(event.id),
-        confirmDismiss: (direction) async => showDialog(
-          context: context,
-          builder: (BuildContext context) => AlertDialog(
-            title: const Text('Remove from Wishlist'),
-            content: Text('Remove "${event.name}" from your wishlist?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
+  Widget _buildItem(Event event) => Card(
+    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    elevation: 2,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    child: Dismissible(
+      key: ValueKey(event.id),
+      direction: DismissDirection.startToEnd,
+      onDismissed: (_) => _removeItem(event.id),
+      confirmDismiss:
+          (direction) async => showDialog(
+            context: context,
+            builder:
+                (BuildContext context) => AlertDialog(
+                  title: const Text('Remove from Wishlist'),
+                  content: Text('Remove "${event.name}" from your wishlist?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.error,
+                      ),
+                      child: const Text('Remove'),
+                    ),
+                  ],
                 ),
-                child: const Text('Remove'),
-              ),
-            ],
           ),
-        ),
-        background: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.error,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          alignment: Alignment.centerLeft,
-          padding: const EdgeInsets.only(left: 20),
-          child: const Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.delete, color: Colors.white, size: 28),
-              SizedBox(height: 4),
-              Text(
-                'Remove',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-              ),
-            ],
-          ),
-        ),
-        child: InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => EventDetailScreen(event: event)),
-            );
-          },
+      background: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.error,
           borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                // Event Image
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: event.imageUrl != null
-                      ? Image.network(
+        ),
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.only(left: 20),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.delete, color: Colors.white, size: 28),
+            SizedBox(height: 4),
+            Text(
+              'Remove',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => EventDetailScreen(event: event)),
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              // Event Image
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child:
+                    event.imageUrl != null
+                        ? Image.network(
                           event.imageUrl!,
                           width: 80,
                           height: 80,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              Icons.event,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              size: 32,
-                            ),
-                          ),
+                          errorBuilder:
+                              (context, error, stackTrace) => Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.event,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  size: 32,
+                                ),
+                              ),
                         )
-                      : Container(
+                        : Container(
                           width: 80,
                           height: 80,
                           decoration: BoxDecoration(
@@ -149,144 +152,142 @@ class WishlistScreenState extends State<WishlistScreen> {
                             size: 32,
                           ),
                         ),
-                ),
-                const SizedBox(width: 16),
+              ),
+              const SizedBox(width: 16),
 
-                // Event Details
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        event.name,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      if (event.venue != null) ...[
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.location_on,
-                              size: 16,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                event.venue!,
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                    ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                      ],
+              // Event Details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      event.name,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    if (event.venue != null) ...[
                       Row(
                         children: [
                           Icon(
-                            Icons.calendar_today,
+                            Icons.location_on,
                             size: 16,
                             color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            event.dateFormatted,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                ),
+                          Expanded(
+                            child: Text(
+                              event.venue!,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
+                      const SizedBox(height: 4),
                     ],
-                  ),
-                ),
-
-                // Favorite Icon and Arrow
-                Column(
-                  children: [
-                    Icon(Icons.favorite, color: Theme.of(context).colorScheme.error, size: 24),
-                    const SizedBox(height: 8),
-                    Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          event.dateFormatted,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+
+              // Favorite Icon and Arrow
+              Column(
+                children: [
+                  Icon(Icons.favorite, color: Theme.of(context).colorScheme.error, size: 24),
+                  const SizedBox(height: 8),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
 
   @override
-  Widget build(BuildContext context) {
-    return Consumer2<WishlistProvider, EventsProvider>(
-      builder: (context, wishProvider, eventsProvider, child) {
-        final wishlistItems = wishProvider.wishlist;
-        final allEvents = eventsProvider.events;
-        final filteredEvents = allEvents.where((e) => wishlistItems.contains(e.id)).toList();
+  Widget build(BuildContext context) => Consumer2<WishlistProvider, EventsProvider>(
+    builder: (context, wishProvider, eventsProvider, child) {
+      final wishlistItems = wishProvider.wishlist;
+      final allEvents = eventsProvider.events;
+      final filteredEvents = allEvents.where((e) => wishlistItems.contains(e.id)).toList();
 
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('My Wishlist'),
-            elevation: 0,
-            actions: [
-              if (wishlistItems.isNotEmpty)
-                IconButton(
-                  icon: const Icon(Icons.info_outline),
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Wishlist Tips'),
-                        content: const Text(
-                          '• Tap any event to view details\n'
-                          '• Swipe right to remove from wishlist\n'
-                          '• Pull down to refresh your wishlist',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Got it'),
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('My Wishlist'),
+          elevation: 0,
+          actions: [
+            if (wishlistItems.isNotEmpty)
+              IconButton(
+                icon: const Icon(Icons.info_outline),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder:
+                        (context) => AlertDialog(
+                          title: const Text('Wishlist Tips'),
+                          content: const Text(
+                            '• Tap any event to view details\n'
+                            '• Swipe right to remove from wishlist\n'
+                            '• Pull down to refresh your wishlist',
                           ),
-                        ],
-                      ),
-                    );
-                  },
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Got it'),
+                            ),
+                          ],
+                        ),
+                  );
+                },
+              ),
+          ],
+        ),
+        body:
+            _loading
+                ? const Center(child: CircularProgressIndicator())
+                : filteredEvents.isEmpty
+                ? _buildEmptyState()
+                : RefreshIndicator(
+                  onRefresh: _refresh,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: filteredEvents.length,
+                    itemBuilder: (context, index) {
+                      final event = filteredEvents[index];
+                      return _buildItem(event);
+                    },
+                  ),
                 ),
-            ],
-          ),
-          body: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : filteredEvents.isEmpty
-                  ? _buildEmptyState()
-                  : RefreshIndicator(
-                      onRefresh: _refresh,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        itemCount: filteredEvents.length,
-                        itemBuilder: (context, index) {
-                          final event = filteredEvents[index];
-                          return _buildItem(event);
-                        },
-                      ),
-                    ),
-        );
-      },
-    );
-  }
+      );
+    },
+  );
 
   Widget _buildEmptyState() => Center(
     child: Padding(

@@ -1,11 +1,11 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:tickets_booking/providers/auth_provider.dart';
-import 'package:tickets_booking/providers/event_provider.dart';
-import 'package:tickets_booking/providers/wishlist_provider.dart';
-import 'package:tickets_booking/providers/theme_mode_notifier.dart';
-import 'package:tickets_booking/screens/main_screen.dart';
+import 'providers/auth_provider.dart';
+import 'providers/event_provider.dart';
+import 'providers/theme_mode_notifier.dart';
+import 'providers/wishlist_provider.dart';
+import 'screens/main_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,26 +17,24 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => EventsProvider()),
-        ChangeNotifierProvider(create: (context) => WishlistProvider(context.read<AuthProvider>())),
-        ChangeNotifierProvider(create: (_) => ThemeModeNotifier()),
-      ],
-      child: Builder(
-        builder:
-            (context) => MaterialApp(
-              title: 'Ticket Booking App',
-              theme: _buildLightTheme(),
-              darkTheme: _buildDarkTheme(),
-              themeMode: context.watch<ThemeModeNotifier>().mode,
-              home: const AuthWrapper(),
-            ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => MultiProvider(
+    providers: [
+      ChangeNotifierProvider(create: (_) => AuthProvider()),
+      ChangeNotifierProvider(create: (_) => EventsProvider()),
+      ChangeNotifierProvider(create: (context) => WishlistProvider(context.read<AuthProvider>())),
+      ChangeNotifierProvider(create: (_) => ThemeModeNotifier()),
+    ],
+    child: Builder(
+      builder:
+          (context) => MaterialApp(
+            title: 'Ticket Booking App',
+            theme: _buildLightTheme(),
+            darkTheme: _buildDarkTheme(),
+            themeMode: context.watch<ThemeModeNotifier>().mode,
+            home: const AuthWrapper(),
+          ),
+    ),
+  );
 
   ThemeData _buildLightTheme() {
     const seedColor = Color(0xFF6750A4); // Modern purple
@@ -299,7 +297,7 @@ class AuthWrapper extends StatelessWidget {
 
                   // Welcome Text
                   Text(
-                    "Welcome to\nTicket Booking",
+                    'Welcome to\nTicket Booking',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.headlineLarge?.copyWith(
                       fontWeight: FontWeight.bold,
@@ -309,7 +307,7 @@ class AuthWrapper extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    "Discover amazing events and book your tickets with ease",
+                    'Discover amazing events and book your tickets with ease',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: colorScheme.onSurfaceVariant,
@@ -324,9 +322,9 @@ class AuthWrapper extends StatelessWidget {
                     width: double.infinity,
                     margin: const EdgeInsets.only(bottom: 32),
                     child: FilledButton.icon(
-                      onPressed: () => authProvider.signInWithGoogle(),
-                      icon: Icon(Icons.g_mobiledata, size: 24),
-                      label: const Text("Continue with Google"),
+                      onPressed: authProvider.signInWithGoogle,
+                      icon: const Icon(Icons.g_mobiledata, size: 24),
+                      label: const Text('Continue with Google'),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),

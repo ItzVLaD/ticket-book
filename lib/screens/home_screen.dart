@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
-import 'package:tickets_booking/providers/event_provider.dart';
-import 'package:tickets_booking/screens/event_detail_screen.dart';
-import 'package:tickets_booking/models/event_group.dart';
-import 'package:tickets_booking/generated/l10n.dart';
-import 'package:tickets_booking/widgets/hero_carousel.dart';
-import 'package:tickets_booking/widgets/genre_chips.dart';
-import 'package:tickets_booking/widgets/event_card.dart';
-import 'package:tickets_booking/widgets/skeleton_loader.dart';
-import 'package:tickets_booking/services/ticketmaster_service.dart';
+import '../generated/l10n.dart';
+import '../models/event_group.dart';
+import '../providers/event_provider.dart';
+import '../services/ticketmaster_service.dart';
+import '../widgets/event_card.dart';
+import '../widgets/genre_chips.dart';
+import '../widgets/hero_carousel.dart';
+import '../widgets/skeleton_loader.dart';
+import 'event_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -177,7 +177,13 @@ class HomeScreenState extends State<HomeScreen> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => EventDetailScreen(event: event)),
+                      MaterialPageRoute(
+                        builder:
+                            (_) => EventDetailScreen(
+                              event: event,
+                              eventGroup: group, // Pass the group for grouped events
+                            ),
+                      ),
                     );
                   },
                 );

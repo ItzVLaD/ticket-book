@@ -1,17 +1,20 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:tickets_booking/models/event.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:tickets_booking/providers/event_provider.dart';
-import 'package:tickets_booking/providers/wishlist_provider.dart';
-import 'package:tickets_booking/providers/auth_provider.dart';
-import 'package:tickets_booking/services/booking_service.dart';
-import 'package:tickets_booking/widgets/quantity_picker.dart';
-import 'package:tickets_booking/generated/l10n.dart';
+import '../generated/l10n.dart';
+import '../models/event.dart';
+import '../models/event_group.dart';
+import '../providers/auth_provider.dart';
+import '../providers/event_provider.dart';
+import '../providers/wishlist_provider.dart';
+import '../services/booking_service.dart';
+import '../widgets/quantity_picker.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final Event event;
-  const EventDetailScreen({super.key, required this.event});
+  final EventGroup? eventGroup; // Optional: for grouped events with multiple venues/dates
+
+  const EventDetailScreen({super.key, required this.event, this.eventGroup});
 
   @override
   State<EventDetailScreen> createState() => _EventDetailScreenState();
@@ -22,6 +25,121 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   int? _localQuantity;
   bool _isBookingInProgress = false;
   final BookingService _bookingService = BookingService();
+
+  // For grouped events: track selected event variation
+  late Event _selectedEvent;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedEvent = widget.event; // Initialize with the passed event
+  }
+
+  // Handle venue/date selection for grouped events
+  void _onEventVariationSelected(Event selectedEvent) {
+    setState(() {
+      _selectedEvent = selectedEvent;
+      // Reset quantity when switching events
+      _localQuantity = null;
+    });
+  }
+
+  // Venue selector widget for grouped events
+  Widget _buildVenueSelector(ColorScheme colorScheme, ThemeData theme) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: colorScheme.surfaceVariant.withOpacity(0.5),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: colorScheme.outline.withOpacity(0.3)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.event_available, color: colorScheme.onSurfaceVariant, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'Select Date & Venue',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
+          ),
+          child: DropdownButton<Event>(
+            value: _selectedEvent,
+            isExpanded: true,
+            underline: const SizedBox(),
+            icon: Icon(Icons.arrow_drop_down, color: colorScheme.onSurface),
+            onChanged: (Event? newValue) {
+              if (newValue != null) {
+                _onEventVariationSelected(newValue);
+              }
+            },
+            items:
+                widget.eventGroup?.schedules.map<DropdownMenuItem<Event>>((event) {
+                  String displayText = '';
+                  if (event.dateFormatted.isNotEmpty && event.venue != null) {
+                    displayText = '${event.dateFormatted} • ${event.venue}';
+                  } else if (event.dateFormatted.isNotEmpty) {
+                    displayText = event.dateFormatted;
+                  } else if (event.venue != null) {
+                    displayText = event.venue!;
+                  } else {
+                    displayText = 'Event ${widget.eventGroup!.schedules.indexOf(event) + 1}';
+                  }
+
+                  return DropdownMenuItem<Event>(
+                    value: event,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          displayText,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (event.priceRanges?.isNotEmpty == true) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            () {
+                              final p = event.priceRanges!.first;
+                              if (p.min != null && p.max != null && p.min != p.max) {
+                                return '${p.min} – ${p.max} ${p.currency}';
+                              }
+                              final single = p.min ?? p.max;
+                              return '$single ${p.currency}';
+                            }(),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                }).toList(),
+          ),
+        ),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -130,7 +248,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: IconButton(
-                            icon: Icon(Icons.share, color: Colors.white),
+                            icon: const Icon(Icons.share, color: Colors.white),
                             onPressed: () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -149,7 +267,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             ),
           ),
           SliverToBoxAdapter(
-            child: Container(
+            child: DecoratedBox(
               decoration: BoxDecoration(
                 color: colorScheme.surface,
                 borderRadius: const BorderRadius.only(
@@ -172,10 +290,16 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Date and venue info cards
+                    // Venue/Date Selection Dropdown for Grouped Events
+                    if (widget.eventGroup != null && widget.eventGroup!.schedules.length > 1) ...[
+                      _buildVenueSelector(colorScheme, theme),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Date and venue info cards (now showing _selectedEvent instead of event)
                     Row(
                       children: [
-                        if (event.dateFormatted.isNotEmpty) ...[
+                        if (_selectedEvent.dateFormatted.isNotEmpty) ...[
                           Expanded(
                             child: Container(
                               padding: const EdgeInsets.all(16),
@@ -193,7 +317,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      event.dateFormatted,
+                                      _selectedEvent.dateFormatted,
                                       style: theme.textTheme.bodyMedium?.copyWith(
                                         color: colorScheme.onPrimaryContainer,
                                         fontWeight: FontWeight.w500,
@@ -205,9 +329,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             ),
                           ),
                         ],
-                        if (event.venue != null && event.dateFormatted.isNotEmpty)
+                        if (_selectedEvent.venue != null && _selectedEvent.dateFormatted.isNotEmpty)
                           const SizedBox(width: 12),
-                        if (event.venue != null) ...[
+                        if (_selectedEvent.venue != null) ...[
                           Expanded(
                             child: Container(
                               padding: const EdgeInsets.all(16),
@@ -225,7 +349,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      event.venue!,
+                                      _selectedEvent.venue!,
                                       style: theme.textTheme.bodyMedium?.copyWith(
                                         color: colorScheme.onSecondaryContainer,
                                         fontWeight: FontWeight.w500,
@@ -243,8 +367,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Price banner
-                    if (event.priceRanges?.isNotEmpty == true) ...[
+                    // Price banner (updated to use _selectedEvent)
+                    if (_selectedEvent.priceRanges?.isNotEmpty == true) ...[
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(20),
@@ -269,7 +393,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             const SizedBox(height: 8),
                             Text(
                               () {
-                                final p = event.priceRanges!.first;
+                                final p = _selectedEvent.priceRanges!.first;
                                 if (p.min != null && p.max != null && p.min != p.max) {
                                   return '${p.min} – ${p.max} ${p.currency}';
                                 }
@@ -287,9 +411,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       const SizedBox(height: 24),
                     ],
 
-                    // Live availability display
+                    // Live availability display (updated to use _selectedEvent)
                     StreamBuilder<QuerySnapshot>(
-                      stream: _bookingService.getEventBookings(event.id),
+                      stream: _bookingService.getEventBookings(_selectedEvent.id),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
                           return Card(
@@ -438,10 +562,20 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       height: 220,
                       child: Builder(
                         builder: (ctx) {
-                          final group = provider.groupedEvents.firstWhere(
-                            (g) => g.schedules.any((e) => e.id == event.id),
-                          );
-                          final similar = provider.similarEventsFor(group);
+                          // Safely find the group, handle case where event might not be in grouped events
+                          EventGroup? group;
+                          try {
+                            group = provider.groupedEvents.firstWhere(
+                              (g) => g.schedules.any((e) => e.id == event.id),
+                            );
+                          } catch (e) {
+                            // Event not found in grouped events (e.g., from search results)
+                            group = null;
+                          }
+
+                          final similar =
+                              group != null ? provider.similarEventsFor(group) : <Event>[];
+
                           if (similar.isEmpty) {
                             return Center(
                               child: Container(
@@ -668,140 +802,138 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final colorScheme = theme.colorScheme;
 
     return StreamBuilder<DocumentSnapshot>(
-      stream: _bookingService.getUserBooking(user.uid, widget.event.id),
-      builder: (context, userBookingSnapshot) {
-        return StreamBuilder<QuerySnapshot>(
-          stream: _bookingService.getEventBookings(widget.event.id),
-          builder: (context, eventBookingsSnapshot) {
-            // Calculate tickets left
-            int ticketsLeft = 100;
-            if (eventBookingsSnapshot.hasData) {
-              int totalBooked = 0;
-              for (final doc in eventBookingsSnapshot.data!.docs) {
-                final data = doc.data() as Map<String, dynamic>;
-                totalBooked += (data['ticketsCount'] as int? ?? 0);
+      stream: _bookingService.getUserBooking(user.uid, _selectedEvent.id),
+      builder:
+          (context, userBookingSnapshot) => StreamBuilder<QuerySnapshot>(
+            stream: _bookingService.getEventBookings(_selectedEvent.id),
+            builder: (context, eventBookingsSnapshot) {
+              // Calculate tickets left
+              int ticketsLeft = 100;
+              if (eventBookingsSnapshot.hasData) {
+                int totalBooked = 0;
+                for (final doc in eventBookingsSnapshot.data!.docs) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  totalBooked += (data['ticketsCount'] as int? ?? 0);
+                }
+                ticketsLeft = 100 - totalBooked;
               }
-              ticketsLeft = 100 - totalBooked;
-            }
 
-            // Get user's current booking
-            int oldQty = 0;
-            bool hasExistingBooking = false;
-            if (userBookingSnapshot.hasData && userBookingSnapshot.data!.exists) {
-              final data = userBookingSnapshot.data!.data() as Map<String, dynamic>;
-              oldQty = data['ticketsCount'] as int? ?? 0;
-              hasExistingBooking = true;
-            }
+              // Get user's current booking
+              int oldQty = 0;
+              bool hasExistingBooking = false;
+              if (userBookingSnapshot.hasData && userBookingSnapshot.data!.exists) {
+                final data = userBookingSnapshot.data!.data() as Map<String, dynamic>;
+                oldQty = data['ticketsCount'] as int? ?? 0;
+                hasExistingBooking = true;
+              }
 
-            // Initialize _localQuantity based on current booking state
-            if (_localQuantity == null) {
-              _localQuantity = hasExistingBooking ? oldQty : 1;
-            }
+              // Initialize _localQuantity based on current booking state
+              _localQuantity ??= hasExistingBooking ? oldQty : 1;
 
-            // Calculate max allowed quantity
-            final availableToAdd = ticketsLeft + oldQty;
-            final maxQuantity = availableToAdd < 10 ? availableToAdd : 10;
+              // Calculate max allowed quantity
+              final availableToAdd = ticketsLeft + oldQty;
+              final maxQuantity = availableToAdd < 10 ? availableToAdd : 10;
 
-            // Determine CTA button state
-            String ctaLabel;
-            bool ctaEnabled;
+              // Determine CTA button state
+              String ctaLabel;
+              bool ctaEnabled;
 
-            if (!hasExistingBooking) {
-              if (_localQuantity == 0) {
-                ctaLabel = 'Select tickets';
-                ctaEnabled = false;
+              if (!hasExistingBooking) {
+                if (_localQuantity == 0) {
+                  ctaLabel = 'Select tickets';
+                  ctaEnabled = false;
+                } else {
+                  ctaLabel = 'Book tickets';
+                  ctaEnabled = true;
+                }
               } else {
-                ctaLabel = 'Book tickets';
-                ctaEnabled = true;
+                if (_localQuantity == oldQty) {
+                  ctaLabel = 'Booked ✓';
+                  ctaEnabled = false;
+                } else if (_localQuantity == 0) {
+                  ctaLabel = 'Cancel booking';
+                  ctaEnabled = true;
+                } else {
+                  ctaLabel = 'Update booking';
+                  ctaEnabled = true;
+                }
               }
-            } else {
-              if (_localQuantity == oldQty) {
-                ctaLabel = 'Booked ✓';
-                ctaEnabled = false;
-              } else if (_localQuantity == 0) {
-                ctaLabel = 'Cancel booking';
-                ctaEnabled = true;
-              } else {
-                ctaLabel = 'Update booking';
-                ctaEnabled = true;
-              }
-            }
 
-            return Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: colorScheme.surface,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                boxShadow: [
-                  BoxShadow(
-                    color: colorScheme.shadow.withOpacity(0.15),
-                    blurRadius: 16,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
-              ),
-              child: SafeArea(
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceVariant,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: QuantityPicker(
-                        quantity: _localQuantity!,
-                        minQuantity: hasExistingBooking ? 0 : 1,
-                        maxQuantity: maxQuantity,
-                        onDecrement:
-                            !_isBookingInProgress && _localQuantity! > (hasExistingBooking ? 0 : 1)
-                                ? () => setState(() => _localQuantity = _localQuantity! - 1)
-                                : null,
-                        onIncrement:
-                            _localQuantity! < maxQuantity &&
-                                    ticketsLeft > 0 &&
-                                    !_isBookingInProgress
-                                ? () => setState(() => _localQuantity = _localQuantity! + 1)
-                                : null,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed:
-                            ctaEnabled && !_isBookingInProgress
-                                ? () => _handleBookingAction()
-                                : null,
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                        child:
-                            _isBookingInProgress
-                                ? SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: colorScheme.onPrimary,
-                                  ),
-                                )
-                                : Text(
-                                  ctaLabel,
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    color: colorScheme.onPrimary,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                      ),
+              return Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: colorScheme.surface,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colorScheme.shadow.withOpacity(0.15),
+                      blurRadius: 16,
+                      offset: const Offset(0, -4),
                     ),
                   ],
                 ),
-              ),
-            );
-          },
-        );
-      },
+                child: SafeArea(
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceVariant,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: QuantityPicker(
+                          quantity: _localQuantity!,
+                          minQuantity: hasExistingBooking ? 0 : 1,
+                          maxQuantity: maxQuantity,
+                          onDecrement:
+                              !_isBookingInProgress &&
+                                      _localQuantity! > (hasExistingBooking ? 0 : 1)
+                                  ? () => setState(() => _localQuantity = _localQuantity! - 1)
+                                  : null,
+                          onIncrement:
+                              _localQuantity! < maxQuantity &&
+                                      ticketsLeft > 0 &&
+                                      !_isBookingInProgress
+                                  ? () => setState(() => _localQuantity = _localQuantity! + 1)
+                                  : null,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed:
+                              ctaEnabled && !_isBookingInProgress
+                                  ? () => _handleBookingAction()
+                                  : null,
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          ),
+                          child:
+                              _isBookingInProgress
+                                  ? SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: colorScheme.onPrimary,
+                                    ),
+                                  )
+                                  : Text(
+                                    ctaLabel,
+                                    style: theme.textTheme.titleMedium?.copyWith(
+                                      color: colorScheme.onPrimary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
     );
   }
 
@@ -810,8 +942,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     try {
       final user = context.read<AuthProvider>().user!;
 
-      // Use updateBooking method which handles both new bookings and updates
-      await _bookingService.updateBooking(user: user, event: widget.event, newQty: _localQuantity!);
+      // Use updateBooking method with the selected event for grouped events
+      await _bookingService.updateBooking(
+        user: user,
+        event: _selectedEvent,
+        newQty: _localQuantity!,
+      );
 
       if (mounted) {
         String message;

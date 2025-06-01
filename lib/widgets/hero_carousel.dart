@@ -1,20 +1,20 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:tickets_booking/models/event_group.dart';
-import 'package:tickets_booking/screens/event_detail_screen.dart';
+import '../models/event_group.dart';
+import '../screens/event_detail_screen.dart';
 
 class HeroCarousel extends StatelessWidget {
-  final List<EventGroup> groups;
-  final PageController pageController;
-  final Widget indicator;
-
   const HeroCarousel({
-    super.key,
     required this.groups,
     required this.pageController,
     required this.indicator,
+    super.key,
   });
+
+  final List<EventGroup> groups;
+  final PageController pageController;
+  final Widget indicator;
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +32,11 @@ class HeroCarousel extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => EventDetailScreen(event: group.schedules.first),
+                    builder:
+                        (_) => EventDetailScreen(
+                          event: group.schedules.first,
+                          eventGroup: group, // Pass the group for grouped events
+                        ),
                   ),
                 );
               },
@@ -41,15 +45,16 @@ class HeroCarousel extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    group.primaryImageUrl != null
-                        ? Image.network(group.primaryImageUrl!, fit: BoxFit.cover)
-                        : Container(
-                          height: 220,
-                          color: theme.colorScheme.surfaceVariant,
-                          alignment: Alignment.bottomLeft,
-                          padding: const EdgeInsets.all(16),
-                          child: Text(group.name, style: theme.textTheme.headlineMedium),
-                        ),
+                    if (group.primaryImageUrl != null)
+                      Image.network(group.primaryImageUrl!, fit: BoxFit.cover)
+                    else
+                      Container(
+                        height: 220,
+                        color: theme.colorScheme.surfaceVariant,
+                        alignment: Alignment.bottomLeft,
+                        padding: const EdgeInsets.all(16),
+                        child: Text(group.name, style: theme.textTheme.headlineMedium),
+                      ),
                     BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                       child: Container(color: Colors.black.withOpacity(0)),

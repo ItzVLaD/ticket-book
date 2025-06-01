@@ -1,3 +1,5 @@
+// ignore_for_file: curly_braces_in_flow_control_structures
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -81,29 +83,35 @@ class TicketmasterService {
   // Groups raw events into EventGroup instances
   List<EventGroup> groupEvents(List<Event> raw) {
     final groupsMap = <String, List<Event>>{};
+
     for (var event in raw) {
-      final key = event.seriesId ?? '${event.name}_${event.firstAttractionId ?? event.id}';
+      final key = _generateGroupingKey(event);
       groupsMap.putIfAbsent(key, () => []).add(event);
     }
+
     final groups = <EventGroup>[];
-    groupsMap.forEach((key, list) {
-      // sort schedules by date
-      list.sort((a, b) {
-        final da = a.date ?? DateTime(0);
-        final db = b.date ?? DateTime(0);
+    groupsMap.forEach((key, events) {
+      // Sort schedules by date, handling null dates
+      events.sort((a, b) {
+        final da = a.date ?? DateTime(2030); // Put events without dates at the end
+        final db = b.date ?? DateTime(2030);
         return da.compareTo(db);
       });
-      final firstDate = list.first.date!;
-      final lastDate = list.last.date!;
-      // choose primary image by longest URL as proxy for resolution
-      String? primaryImage;
-      for (var e in list) {
-        if (e.imageUrl != null &&
-            (primaryImage == null || e.imageUrl!.length > primaryImage.length)) {
-          primaryImage = e.imageUrl;
-        }
-      }
-      final name = list.first.seriesName ?? list.first.name;
+
+      // Find first and last valid dates
+      final eventsWithDates = events.where((e) => e.date != null).toList();
+      final firstDate =
+          eventsWithDates.isNotEmpty
+              ? eventsWithDates.first.date!
+              : DateTime.now(); // Fallback for events without dates
+      final lastDate = eventsWithDates.isNotEmpty ? eventsWithDates.last.date! : firstDate;
+
+      // Choose primary image by resolution priority (width in URL) and then by length
+      String? primaryImage = _selectBestImage(events);
+
+      // Choose the best name (prefer seriesName, then the most common name)
+      final name = _selectBestName(events);
+
       groups.add(
         EventGroup(
           id: key,
@@ -111,12 +119,102 @@ class TicketmasterService {
           primaryImageUrl: primaryImage,
           firstDate: firstDate,
           lastDate: lastDate,
-          schedules: list,
+          schedules: events,
         ),
       );
     });
-    // sort groups by firstDate
+
+    // Sort groups by firstDate
     groups.sort((a, b) => a.firstDate.compareTo(b.firstDate));
     return groups;
+  }
+
+  /// Generates a consistent grouping key for events
+  String _generateGroupingKey(Event event) {
+    // Priority 1: Use seriesId if available (most reliable)
+    if (event.seriesId != null && event.seriesId!.isNotEmpty) {
+      return 'series_${event.seriesId}';
+    }
+
+    // Priority 2: Use attraction ID + normalized name for consistency
+    if (event.firstAttractionId != null && event.firstAttractionId!.isNotEmpty) {
+      final normalizedName = _normalizeName(event.name);
+      return 'attraction_${event.firstAttractionId}_$normalizedName';
+    }
+
+    // Priority 3: Fallback to normalized name only
+    final normalizedName = _normalizeName(event.name);
+    return 'name_$normalizedName';
+  }
+
+  /// Normalizes event names for better grouping
+  String _normalizeName(String name) =>
+      name
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^\w\s]'), '') // Remove special characters
+          .replaceAll(RegExp(r'\s+'), '_') // Replace spaces with underscores
+          .trim();
+
+  /// Selects the best image from a list of events
+  String? _selectBestImage(List<Event> events) {
+    String? bestImage;
+    int bestScore = 0;
+
+    for (var event in events) {
+      if (event.imageUrl != null) {
+        final score = _calculateImageScore(event.imageUrl!);
+        if (score > bestScore) {
+          bestScore = score;
+          bestImage = event.imageUrl;
+        }
+      }
+    }
+
+    return bestImage;
+  }
+
+  /// Calculates image quality score based on URL patterns
+  int _calculateImageScore(String imageUrl) {
+    int score = imageUrl.length; // Base score from length
+
+    // Bonus for higher resolution indicators in URL
+    if (imageUrl.contains('1024x576')) {
+      score += 1000;
+    } else if (imageUrl.contains('640x360'))
+      score += 800;
+    else if (imageUrl.contains('480x270'))
+      score += 600;
+    else if (imageUrl.contains('305x225'))
+      score += 400;
+    else if (imageUrl.contains('205x115'))
+      score += 200;
+
+    // Bonus for HTTPS
+    if (imageUrl.startsWith('https://')) score += 100;
+
+    return score;
+  }
+
+  /// Selects the best name from a list of events
+  String _selectBestName(List<Event> events) {
+    // Priority 1: Use seriesName if available and consistent
+    final seriesNames =
+        events
+            .where((e) => e.seriesName != null && e.seriesName!.isNotEmpty)
+            .map((e) => e.seriesName!)
+            .toSet();
+
+    if (seriesNames.length == 1) {
+      return seriesNames.first;
+    }
+
+    // Priority 2: Use the most common event name
+    final nameFrequency = <String, int>{};
+    for (var event in events) {
+      nameFrequency[event.name] = (nameFrequency[event.name] ?? 0) + 1;
+    }
+
+    // Return the most frequent name, or first if tied
+    return nameFrequency.entries.reduce((a, b) => a.value > b.value ? a : b).key;
   }
 }

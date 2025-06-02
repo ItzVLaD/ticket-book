@@ -37,13 +37,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       // Try to find the passed event in currentSchedules first
       Event? currentEvent;
       try {
-        currentEvent = widget.eventGroup!.currentSchedules
-            .firstWhere((e) => e.id == widget.event.id);
+        currentEvent = widget.eventGroup!.currentSchedules.firstWhere(
+          (e) => e.id == widget.event.id,
+        );
       } catch (e) {
         // Event not found in currentSchedules
         currentEvent = null;
       }
-      
+
       // If the passed event is current, use it; otherwise use the first current event
       _selectedEvent = currentEvent ?? widget.eventGroup!.currentSchedules.first;
     } else {
@@ -67,57 +68,59 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           value: _selectedEvent.id,
           icon: Icon(Icons.expand_more, color: colorScheme.onSurfaceVariant),
           isExpanded: true,
-          items: widget.eventGroup!.currentSchedules.map((event) {
-            // Use only current events
-            String displayText;
-            if (event.dateFormatted.isNotEmpty && event.venue != null) {
-              displayText = '${event.dateFormatted} • ${event.venue}';
-            } else if (event.dateFormatted.isNotEmpty) {
-              displayText = event.dateFormatted;
-            } else if (event.venue != null) {
-              displayText = event.venue!;
-            } else {
-              displayText = 'Event ${widget.eventGroup!.schedules.indexOf(event) + 1}';
-            }
+          items:
+              widget.eventGroup!.currentSchedules.map((event) {
+                // Use only current events
+                String displayText;
+                if (event.dateFormatted.isNotEmpty && event.venue != null) {
+                  displayText = '${event.dateFormatted} • ${event.venue}';
+                } else if (event.dateFormatted.isNotEmpty) {
+                  displayText = event.dateFormatted;
+                } else if (event.venue != null) {
+                  displayText = event.venue!;
+                } else {
+                  displayText = 'Event ${widget.eventGroup!.schedules.indexOf(event) + 1}';
+                }
 
-            return DropdownMenuItem<String>(
-              value: event.id,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    displayText,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (event.priceRanges?.isNotEmpty == true) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      () {
-                        final p = event.priceRanges!.first;
-                        if (p.min != null && p.max != null && p.min != p.max) {
-                          return '${p.min} – ${p.max} ${p.currency}';
-                        }
-                        final single = p.min ?? p.max;
-                        return '$single ${p.currency}';
-                      }(),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
+                return DropdownMenuItem<String>(
+                  value: event.id,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayText,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
-                ],
-              ),
-            );
-          }).toList(),
+                      if (event.priceRanges?.isNotEmpty == true) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          () {
+                            final p = event.priceRanges!.first;
+                            if (p.min != null && p.max != null && p.min != p.max) {
+                              return '${p.min} – ${p.max} ${p.currency}';
+                            }
+                            final single = p.min ?? p.max;
+                            return '$single ${p.currency}';
+                          }(),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              }).toList(),
           onChanged: (String? newEventId) {
             if (newEventId != null) {
-              final newEvent = widget.eventGroup!.currentSchedules
-                  .firstWhere((event) => event.id == newEventId);
+              final newEvent = widget.eventGroup!.currentSchedules.firstWhere(
+                (event) => event.id == newEventId,
+              );
               setState(() {
                 _selectedEvent = newEvent;
                 // Reset quantity when switching events
@@ -145,18 +148,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               const SizedBox(height: 8),
               SelectableText(
                 url,
-                style: const TextStyle(
-                  color: Colors.blue,
-                  decoration: TextDecoration.underline,
-                ),
+                style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
               ),
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close')),
           ],
         );
       },
@@ -308,7 +305,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     const SizedBox(height: 16),
 
                     // Venue/Date Selection Dropdown for Grouped Events
-                    if (widget.eventGroup != null && widget.eventGroup!.currentSchedules.length > 1) ...[
+                    if (widget.eventGroup != null &&
+                        widget.eventGroup!.currentSchedules.length > 1) ...[
                       _buildVenueSelector(colorScheme, theme),
                       const SizedBox(height: 20),
                     ],
@@ -340,7 +338,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          
+
                           // Date and Time row
                           if (_selectedEvent.dateFormatted.isNotEmpty) ...[
                             Row(
@@ -384,7 +382,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             ),
                             const SizedBox(height: 16),
                           ],
-                          
+
                           // Venue row
                           if (_selectedEvent.venue != null) ...[
                             Row(
@@ -431,7 +429,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             if (_selectedEvent.city != null && _selectedEvent.city!.isNotEmpty)
                               const SizedBox(height: 16),
                           ],
-                          
+
                           // Location row (City/Country)
                           if (_selectedEvent.city != null && _selectedEvent.city!.isNotEmpty) ...[
                             Row(

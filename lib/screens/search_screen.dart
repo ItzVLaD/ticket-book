@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:tickets_booking/models/search_filters.dart';
 import 'package:tickets_booking/services/ticketmaster_service.dart';
 import 'package:tickets_booking/models/event.dart';
+import 'package:tickets_booking/models/event_group.dart';
 import 'package:tickets_booking/widgets/event_card.dart';
 import 'package:tickets_booking/widgets/skeleton_loader.dart';
 import 'package:tickets_booking/generated/l10n.dart';
@@ -22,7 +23,8 @@ class SearchController extends ChangeNotifier {
   final TicketmasterService _service = TicketmasterService();
   final TextEditingController queryController = TextEditingController();
   SearchFilters filters = SearchFilters();
-  List<Event> results = [];
+  List<Event> _rawResults = [];
+  List<EventGroup> results = [];
   bool isLoading = false;
   bool hasError = false;
   bool hasMore = true;
@@ -32,7 +34,8 @@ class SearchController extends ChangeNotifier {
 
   SearchController() {
     queryController.addListener(_onQueryChanged);
-    _search();
+    // Load default events on initialization
+    _loadDefaultEvents();
   }
 
   void _onQueryChanged() {
@@ -40,21 +43,56 @@ class SearchController extends ChangeNotifier {
     _debounce = Timer(const Duration(milliseconds: 300), () {
       if (_disposed) return;
       _page = 0;
+      _rawResults.clear();
       results.clear();
       hasMore = true;
       _search();
     });
   }
 
+  Future<void> _loadDefaultEvents() async {
+    if (_disposed) return;
+    isLoading = true;
+    hasError = false;
+    notifyListeners();
+
+    try {
+      // Load popular events by default (concerts, sports, theatre)
+      final defaultEvents = await _service.fetchEvents(keyword: 'concert');
+      if (_disposed) return;
+
+      _rawResults = defaultEvents.where((event) => event.isCurrent).toList();
+      results = _service.groupEvents(_rawResults);
+      hasMore = false; // Default load doesn't support pagination
+    } catch (e) {
+      if (!_disposed) hasError = true;
+    } finally {
+      if (_disposed) return;
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> _search() async {
     if (_disposed || !hasMore) return;
+    
+    // If query is empty and no filters applied, show default events
+    if (queryController.text.isEmpty && _isFiltersEmpty()) {
+      await _loadDefaultEvents();
+      return;
+    }
+
     isLoading = true;
     hasError = false;
     notifyListeners();
 
     try {
       final pageKey = _page + 1;
-      final pageResults = await _service.fetchEvents(keyword: queryController.text);
+      final pageResults = await _service.fetchEventsWithFilters(
+        keyword: queryController.text.isEmpty ? null : queryController.text,
+        filters: filters,
+        page: pageKey,
+      );
       if (_disposed) return;
 
       // Filter out expired events
@@ -63,7 +101,9 @@ class SearchController extends ChangeNotifier {
       if (currentEvents.isEmpty) {
         hasMore = false;
       } else {
-        results.addAll(currentEvents);
+        _rawResults.addAll(currentEvents);
+        // Group all results together for consistent grouping
+        results = _service.groupEvents(_rawResults);
         _page = pageKey;
       }
     } catch (e) {
@@ -75,17 +115,30 @@ class SearchController extends ChangeNotifier {
     }
   }
 
+  bool _isFiltersEmpty() {
+    return filters.dateRange == null && 
+           filters.genres.isEmpty && 
+           filters.radius == null;
+  }
+
   Future<void> refresh() async {
     _debounce?.cancel();
     _page = 0;
+    _rawResults.clear();
     results.clear();
     hasMore = true;
-    await _search();
+    
+    if (queryController.text.isEmpty && _isFiltersEmpty()) {
+      await _loadDefaultEvents();
+    } else {
+      await _search();
+    }
   }
 
   void updateFilters(SearchFilters newFilters) {
     filters = newFilters;
     _page = 0;
+    _rawResults.clear();
     results.clear();
     hasMore = true;
     _search();
@@ -134,23 +187,57 @@ class _SearchView extends StatelessWidget {
           onNotification: (notif) {
             if (notif.metrics.pixels >= notif.metrics.maxScrollExtent - 200 &&
                 !ctrl.isLoading &&
-                ctrl.hasMore) {
+                ctrl.hasMore &&
+                ctrl.queryController.text.isNotEmpty) {
               ctrl._search(); // ignore: invalid_use_of_protected_member
             }
             return false;
           },
           child: CustomScrollView(
             slivers: [
+              // Show default state message when no search query
+              if (ctrl.queryController.text.isEmpty && ctrl._isFiltersEmpty() && !ctrl.isLoading && ctrl.results.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: Container(
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.explore, color: theme.colorScheme.primary),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Popular events near you',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              
               SliverList(
                 delegate: SliverChildBuilderDelegate((context, index) {
                   if (index < ctrl.results.length) {
+                    final group = ctrl.results[index];
+                    final event = group.schedules.first;
                     return EventCard(
-                      event: ctrl.results[index],
+                      event: event,
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => EventDetailScreen(event: ctrl.results[index]),
+                            builder: (_) => EventDetailScreen(
+                              event: event,
+                              eventGroup: group.schedules.length > 1 ? group : null,
+                            ),
                           ),
                         );
                       },
@@ -158,9 +245,10 @@ class _SearchView extends StatelessWidget {
                   }
                   // loader at bottom
                   return ctrl.isLoading ? const SkeletonEventCard() : const SizedBox.shrink();
-                }, childCount: ctrl.results.length + (ctrl.hasMore ? 1 : 0)),
+                }, childCount: ctrl.results.length + (ctrl.hasMore && ctrl.queryController.text.isNotEmpty ? 1 : 0)),
               ),
-              if (!ctrl.isLoading && ctrl.results.isEmpty && ctrl.queryController.text.isNotEmpty)
+              
+              if (!ctrl.isLoading && ctrl.results.isEmpty && (ctrl.queryController.text.isNotEmpty || !ctrl._isFiltersEmpty()))
                 SliverFillRemaining(
                   child: Center(
                     child: Column(
@@ -180,6 +268,7 @@ class _SearchView extends StatelessWidget {
                     ),
                   ),
                 ),
+              
               if (ctrl.hasError)
                 SliverFillRemaining(
                   child: Center(
@@ -233,31 +322,48 @@ class _FilterSheet extends StatefulWidget {
 
 class _FilterSheetState extends State<_FilterSheet> {
   late DateTimeRange? _dateRange;
-  late RangeValues _price;
   late List<String> _genres;
   int? _radius;
-  final _allGenres = ['Concerts', 'Theatre', 'Sports', 'Exhibitions', 'Other'];
-  final _radiusOptions = [null, 10, 25, 50];
+  final _allGenres = [
+    'Music', 'Sports', 'Arts & Theatre', 'Film', 'Miscellaneous'
+  ];
+  final _radiusOptions = [null, 10, 25, 50, 100];
 
   @override
   void initState() {
     super.initState();
     _dateRange = widget.initial.dateRange;
-    _price = widget.initial.priceRange;
     _genres = List.from(widget.initial.genres);
     _radius = widget.initial.radius;
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return SafeArea(
       child: Column(
         children: [
-          ListTile(
-            title: Text(S.of(context).filters),
-            trailing: IconButton(
-              icon: const Icon(Icons.close),
-              onPressed: () => Navigator.pop(context),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: Row(
+              children: [
+                Text(
+                  S.of(context).filters,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -266,93 +372,202 @@ class _FilterSheetState extends State<_FilterSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(S.of(context).dateRange),
-                  const SizedBox(height: 8),
-                  OutlinedButton(
-                    onPressed: () async {
-                      final range = await showDateRangePicker(
-                        context: context,
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime(2100),
-                        initialDateRange: _dateRange,
-                      );
-                      if (range != null) setState(() => _dateRange = range);
-                    },
-                    child: Text(
-                      _dateRange != null
-                          ? '${S.of(context).from} ${_dateRange!.start.toLocal()} to ${_dateRange!.end.toLocal()}'
-                          : S.of(context).selectDate,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(S.of(context).priceRange),
-                  RangeSlider(
-                    values: _price,
-                    min: 0,
-                    max: 1000,
-                    divisions: 20,
-                    labels: RangeLabels(
-                      _price.start.toStringAsFixed(0),
-                      _price.end.toStringAsFixed(0),
-                    ),
-                    onChanged: (v) => setState(() => _price = v),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(S.of(context).genres),
-                  Wrap(
-                    spacing: 8,
-                    children:
-                        _allGenres.map((g) {
-                          final sel = _genres.contains(g);
-                          return ChoiceChip(
-                            label: Text(g),
-                            selected: sel,
-                            onSelected:
-                                (_) => setState(() => sel ? _genres.remove(g) : _genres.add(g)),
-                          );
-                        }).toList(),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(S.of(context).radius),
-                  DropdownButton<int?>(
-                    value: _radius,
-                    items:
-                        _radiusOptions
-                            .map(
-                              (r) => DropdownMenuItem(
-                                value: r,
-                                child: Text(r == null ? S.of(context).any : '$r km'),
+                  // Date Range Filter
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.calendar_today, 
+                                   size: 20, 
+                                   color: theme.colorScheme.primary),
+                              const SizedBox(width: 8),
+                              Text(
+                                S.of(context).dateRange,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            )
-                            .toList(),
-                    onChanged: (v) => setState(() => _radius = v),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                final range = await showDateRangePicker(
+                                  context: context,
+                                  firstDate: DateTime.now(),
+                                  lastDate: DateTime.now().add(const Duration(days: 365)),
+                                  initialDateRange: _dateRange,
+                                );
+                                if (range != null) setState(() => _dateRange = range);
+                              },
+                              icon: const Icon(Icons.date_range),
+                              label: Text(
+                                _dateRange != null
+                                    ? '${_formatDate(_dateRange!.start)} - ${_formatDate(_dateRange!.end)}'
+                                    : S.of(context).selectDate,
+                              ),
+                            ),
+                          ),
+                          if (_dateRange != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: TextButton.icon(
+                                onPressed: () => setState(() => _dateRange = null),
+                                icon: const Icon(Icons.clear, size: 16),
+                                label: const Text('Clear'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: theme.colorScheme.error,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Genre Filter
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.category, 
+                                   size: 20, 
+                                   color: theme.colorScheme.primary),
+                              const SizedBox(width: 8),
+                              Text(
+                                S.of(context).genres,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _allGenres.map((g) {
+                              final sel = _genres.contains(g);
+                              return FilterChip(
+                                label: Text(g),
+                                selected: sel,
+                                onSelected: (_) => setState(() => 
+                                  sel ? _genres.remove(g) : _genres.add(g)
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Radius Filter
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.location_on, 
+                                   size: 20, 
+                                   color: theme.colorScheme.primary),
+                              const SizedBox(width: 8),
+                              Text(
+                                S.of(context).radius,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: DropdownButtonFormField<int?>(
+                              value: _radius,
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                              ),
+                              items: _radiusOptions
+                                  .map(
+                                    (r) => DropdownMenuItem(
+                                      value: r,
+                                      child: Text(r == null ? S.of(context).any : '$r km'),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (v) => setState(() => _radius = v),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-          Padding(
+          Container(
             padding: const EdgeInsets.all(16),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(
-                    context,
-                    SearchFilters(
-                      dateRange: _dateRange,
-                      priceRange: _price,
-                      genres: _genres,
-                      radius: _radius,
-                    ),
-                  );
-                },
-                child: Text(S.of(context).apply),
-              ),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      setState(() {
+                        _dateRange = null;
+                        _genres.clear();
+                        _radius = null;
+                      });
+                    },
+                    child: const Text('Clear All'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton(
+                    onPressed: () {
+                      Navigator.pop(
+                        context,
+                        SearchFilters(
+                          dateRange: _dateRange,
+                          genres: _genres,
+                          radius: _radius,
+                        ),
+                      );
+                    },
+                    child: Text(S.of(context).apply),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
   }
 }

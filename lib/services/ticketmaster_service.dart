@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../api_keys.dart';
 import '../models/event.dart';
 import '../models/event_group.dart';
+import '../models/search_filters.dart';
 
 class TicketmasterService {
   final String apiKey = ApiKeys.ticketMaster;
@@ -17,14 +18,99 @@ class TicketmasterService {
 
   Future<List<Event>> fetchEvents({String keyword = 'concert'}) async {
     try {
+      // Always filter for current events (from today onwards)
+      final today = DateTime.now().toIso8601String().split('T')[0];
+      
       final uri = Uri.parse('$baseUrl/events.json').replace(
         queryParameters: {
           'apikey': apiKey,
           'keyword': keyword,
           'size': '20', // Limit results for better performance
           'sort': 'date,asc',
+          'localStartDateTime': '${today}T00:00:00', // Only get current events
         },
       );
+
+      final response = await http.get(uri).timeout(_timeout);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        // Check if events exist in response
+        final embedded = data['_embedded'];
+        if (embedded == null || embedded['events'] == null) {
+          return [];
+        }
+
+        final eventsJson = embedded['events'] as List;
+        return eventsJson.map((e) => Event.fromJson(e as Map<String, dynamic>)).toList();
+      } else if (response.statusCode == 429) {
+        throw Exception('Rate limit exceeded. Please try again later.');
+      } else {
+        throw Exception('Failed to load events: ${response.statusCode}');
+      }
+    } on SocketException {
+      throw Exception('No internet connection. Please check your network.');
+    } on HttpException {
+      throw Exception('Service temporarily unavailable.');
+    } catch (e) {
+      throw Exception('Failed to load events: ${e.toString()}');
+    }
+  }
+
+  Future<List<Event>> fetchEventsWithFilters({
+    String? keyword,
+    SearchFilters? filters,
+    int page = 1,
+  }) async {
+    try {
+      final Map<String, String> queryParams = {
+        'apikey': apiKey,
+        'size': '20',
+        'page': page.toString(),
+        'sort': 'date,asc',
+      };
+
+      // Add keyword if provided
+      if (keyword != null && keyword.isNotEmpty) {
+        queryParams['keyword'] = keyword;
+      }
+
+      // Add filters if provided
+      if (filters != null) {
+        // Date range filter - use proper format
+        if (filters.dateRange != null) {
+          final startDate = filters.dateRange!.start.toIso8601String().split('T')[0];
+          final endDate = filters.dateRange!.end.toIso8601String().split('T')[0];
+          queryParams['localStartDateTime'] = '${startDate}T00:00:00,${endDate}T23:59:59';
+        } else {
+          // Always filter for current events (from today onwards)
+          final today = DateTime.now().toIso8601String().split('T')[0];
+          queryParams['localStartDateTime'] = '${today}T00:00:00';
+        }
+
+        // Genre filter - map to Ticketmaster segment IDs
+        if (filters.genres.isNotEmpty) {
+          final segmentIds = _mapGenresToSegmentIds(filters.genres);
+          if (segmentIds.isNotEmpty) {
+            queryParams['segmentId'] = segmentIds.join(',');
+          }
+        }
+
+        // Radius filter - only apply if specified (remove default location)
+        if (filters.radius != null) {
+          queryParams['radius'] = filters.radius.toString();
+          queryParams['unit'] = 'km';
+          // Note: This requires user location to work properly
+          // For now, we'll skip location-based filtering unless user provides location
+        }
+      } else {
+        // If no filters, still filter for current events
+        final today = DateTime.now().toIso8601String().split('T')[0];
+        queryParams['localStartDateTime'] = '${today}T00:00:00';
+      }
+
+      final uri = Uri.parse('$baseUrl/events.json').replace(queryParameters: queryParams);
 
       final response = await http.get(uri).timeout(_timeout);
 
@@ -216,5 +302,21 @@ class TicketmasterService {
 
     // Return the most frequent name, or first if tied
     return nameFrequency.entries.reduce((a, b) => a.value > b.value ? a : b).key;
+  }
+
+  // Map genre names to Ticketmaster segment IDs
+  List<String> _mapGenresToSegmentIds(List<String> genres) {
+    final genreMap = {
+      'Music': 'KZFzniwnSyZfZ7v7nJ', // Music segment ID - 61,676 events
+      'Sports': 'KZFzniwnSyZfZ7v7nE', // Sports segment ID - 18,072 events
+      'Arts & Theatre': 'KZFzniwnSyZfZ7v7na', // Arts & Theatre segment ID - 79,580 events
+      'Film': 'KZFzniwnSyZfZ7v7nn', // Film segment ID - 559 events
+      'Miscellaneous': 'KZFzniwnSyZfZ7v7n1', // Miscellaneous segment ID - 29,572 events
+    };
+
+    return genres
+        .where((genre) => genreMap.containsKey(genre))
+        .map((genre) => genreMap[genre]!)
+        .toList();
   }
 }

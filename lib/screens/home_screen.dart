@@ -21,7 +21,7 @@ class HomeScreen extends StatefulWidget {
 class HomeScreenState extends State<HomeScreen> {
   final PageController _pageController = PageController();
   // first genre selected by default
-  String _selectedGenre = 'Concerts';
+  String _selectedGenre = 'Music';
   // hero carousel groups loaded initially, unchanged by chip selection
   List<EventGroup>? _heroGroups;
 
@@ -37,28 +37,23 @@ class HomeScreenState extends State<HomeScreen> {
         _heroGroups = service.groupEvents(rawDefault);
       });
       // 2. load filtered list for initial chip selection
-      var initialKey = _selectedGenre.toLowerCase();
-      if (initialKey.endsWith('s')) {
-        initialKey = initialKey.substring(0, initialKey.length - 1);
-      }
-      await context.read<EventsProvider>().loadEvents(keyword: initialKey);
+      final initialKeyword = _getKeywordFromGenre(_selectedGenre);
+      await context.read<EventsProvider>().loadEvents(keyword: initialKeyword);
     });
   }
 
   Future<void> _onRefresh() async {
-    // normalize selected genre to API keyword
-    var key = _selectedGenre.toLowerCase();
-    if (key.endsWith('s')) key = key.substring(0, key.length - 1);
-    await context.read<EventsProvider>().loadEvents(keyword: key);
+    // Use proper keyword mapping for selected genre
+    final keyword = _getKeywordFromGenre(_selectedGenre);
+    await context.read<EventsProvider>().loadEvents(keyword: keyword);
   }
 
   void _onGenreSelected(String genre) {
     // Update selected genre and reload list; hero carousel uses initial data only
     setState(() => _selectedGenre = genre);
-    // normalize genre label to keyword
-    var key = genre.toLowerCase();
-    if (key.endsWith('s')) key = key.substring(0, key.length - 1);
-    context.read<EventsProvider>().loadEvents(keyword: key);
+    // Use proper keyword mapping for genre
+    final keyword = _getKeywordFromGenre(genre);
+    context.read<EventsProvider>().loadEvents(keyword: keyword);
   }
 
   @override
@@ -99,7 +94,7 @@ class HomeScreenState extends State<HomeScreen> {
           ),
           SliverToBoxAdapter(
             child: GenreChips(
-              genres: const ['Concerts', 'Theatre', 'Sports', 'Exhibitions', 'Other'],
+              genres: const ['Music', 'Sports', 'Arts & Theatre', 'Film', 'Miscellaneous'],
               selected: _selectedGenre,
               onSelected: _onGenreSelected,
             ),
@@ -195,8 +190,15 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   String _getKeywordFromGenre(String genre) {
-    var key = genre.toLowerCase();
-    if (key.endsWith('s')) key = key.substring(0, key.length - 1);
-    return key;
+    // Map genre names to effective keywords based on API testing
+    final keywordMap = {
+      'Music': 'music',           // 66,202 events
+      'Sports': 'sports',         // 18,570 events  
+      'Arts & Theatre': 'theatre', // 93,738 events
+      'Film': 'film',             // 756 events
+      'Miscellaneous': 'concert', // Use 'concert' for miscellaneous as fallback
+    };
+    
+    return keywordMap[genre] ?? genre.toLowerCase();
   }
 }

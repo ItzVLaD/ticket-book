@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../generated/l10n.dart';
 import '../models/event.dart';
 import '../models/event_group.dart';
@@ -134,26 +135,77 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   // Launch URL in the default browser
-  void _launchEventURL(String url) {
+  Future<void> _launchEventURL(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          _showErrorDialog('Could not open the event page. Please check your internet connection.');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorDialog('Error opening event page: ${e.toString()}');
+      }
+    }
+  }
+
+  // Launch map with event location
+  Future<void> _launchMap() async {
+    if (_selectedEvent.latitude == null || _selectedEvent.longitude == null) {
+      _showErrorDialog('Location coordinates not available for this event.');
+      return;
+    }
+
+    try {
+      // Create maps URL with coordinates
+      final lat = _selectedEvent.latitude!;
+      final lng = _selectedEvent.longitude!;
+      final label = Uri.encodeComponent(_selectedEvent.venue ?? _selectedEvent.name);
+
+      // Try different map providers in order of preference
+      final mapUrls = [
+        'https://www.google.com/maps/search/?api=1&query=$lat,$lng&query_place_id=$label',
+        'https://maps.apple.com/?q=$lat,$lng&ll=$lat,$lng',
+        'https://www.openstreetmap.org/?mlat=$lat&mlon=$lng&zoom=15',
+      ];
+
+      bool launched = false;
+      for (final mapUrl in mapUrls) {
+        try {
+          final uri = Uri.parse(mapUrl);
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+            launched = true;
+            break;
+          }
+        } catch (e) {
+          continue; // Try next map provider
+        }
+      }
+
+      if (!launched && mounted) {
+        _showErrorDialog('Could not open maps application. Please install a maps app.');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorDialog('Error opening map: ${e.toString()}');
+      }
+    }
+  }
+
+  // Show error dialog
+  void _showErrorDialog(String message) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Visit Event Site'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Open this URL in your browser:'),
-              const SizedBox(height: 8),
-              SelectableText(
-                url,
-                style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
-              ),
-            ],
-          ),
+          title: const Text('Error'),
+          content: Text(message),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close')),
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
           ],
         );
       },
@@ -303,6 +355,115 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+
+                    // Category and Genre Information Section
+                    if (_selectedEvent.category != null || _selectedEvent.genre != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: colorScheme.primary,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(Icons.category, color: colorScheme.onPrimary, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (_selectedEvent.category != null) ...[
+                                    Text(
+                                      'Category',
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: colorScheme.onSurfaceVariant,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Text(
+                                      _selectedEvent.category!,
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                        color: colorScheme.onSurface,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                  if (_selectedEvent.category != null &&
+                                      _selectedEvent.genre != null)
+                                    const SizedBox(height: 8),
+                                  if (_selectedEvent.genre != null) ...[
+                                    Text(
+                                      'Genre',
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: colorScheme.onSurfaceVariant,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Text(
+                                      _selectedEvent.genre!,
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                        color: colorScheme.onSurface,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Action Buttons Section
+                    Row(
+                      children: [
+                        // Visit Event Page Button
+                        if (_selectedEvent.url != null) ...[
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _launchEventURL(_selectedEvent.url!),
+                              icon: const Icon(Icons.open_in_new),
+                              label: const Text('Visit Event Page'),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        // Show on Map Button
+                        if (_selectedEvent.latitude != null &&
+                            _selectedEvent.longitude != null) ...[
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _launchMap,
+                              icon: const Icon(Icons.map),
+                              label: const Text('Show on Map'),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 20),
 
                     // Venue/Date Selection Dropdown for Grouped Events
                     if (widget.eventGroup != null &&
@@ -723,8 +884,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                             top: Radius.circular(16),
                                           ),
                                           child: Hero(
-                                            tag:
-                                                'event_${e.id}_similar', // Add unique tag for similar events
+                                            tag: 'event_${e.id}_similar',
                                             child:
                                                 e.imageUrl != null
                                                     ? Image.network(

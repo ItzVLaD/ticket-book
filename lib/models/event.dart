@@ -32,6 +32,9 @@ class Event {
     this.seriesName,
     this.firstAttractionId,
     this.priceRanges,
+    this.category,
+    this.latitude,
+    this.longitude,
   });
 
   final String id;
@@ -51,6 +54,9 @@ class Event {
   final String? seriesName;
   final String? firstAttractionId;
   final List<PriceRange>? priceRanges;
+  final String? category;
+  final double? latitude;
+  final double? longitude;
 
   factory Event.fromJson(Map<String, dynamic> json) {
     final images = (json['images'] as List?) ?? [];
@@ -62,10 +68,19 @@ class Event {
     String? cityName;
     String? stateName;
     String? countryName;
+    double? latitude;
+    double? longitude;
 
     if (venues.isNotEmpty) {
       final venue = venues[0] as Map<String, dynamic>;
       venueName = venue['name'] as String?;
+
+      // Extract coordinates
+      final location = venue['location'] as Map<String, dynamic>?;
+      if (location != null) {
+        latitude = double.tryParse(location['latitude']?.toString() ?? '');
+        longitude = double.tryParse(location['longitude']?.toString() ?? '');
+      }
 
       // Extract city information
       final city = venue['city'] as Map<String, dynamic>?;
@@ -99,6 +114,19 @@ class Event {
       fullCityLocation = locationParts.join(', ');
     }
 
+    // Extract category and genre from classifications
+    String? category;
+    String? genre;
+    final classifications = (json['classifications'] as List?) ?? [];
+    if (classifications.isNotEmpty) {
+      final primaryClassification = classifications[0] as Map<String, dynamic>;
+      final segment = primaryClassification['segment'] as Map<String, dynamic>?;
+      final genreData = primaryClassification['genre'] as Map<String, dynamic>?;
+
+      category = segment?['name'] as String?;
+      genre = genreData?['name'] as String?;
+    }
+
     final dateString = json['dates']?['start']?['localDate'] as String?;
     DateTime? parsedDate;
     if (dateString != null) {
@@ -125,6 +153,11 @@ class Event {
       seriesName: seriesName,
       firstAttractionId: firstAttractionId,
       priceRanges: priceRanges,
+      category: category,
+      genre: genre,
+      url: json['url'] as String?,
+      latitude: latitude,
+      longitude: longitude,
     );
   }
 

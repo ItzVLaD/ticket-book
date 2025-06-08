@@ -169,6 +169,7 @@ class HomeScreenState extends State<HomeScreen> {
                 final event = group.schedules.first;
                 return EventCard(
                   event: event,
+                  heroTagSuffix: 'home', // Add unique suffix for home screen
                   onTap: () {
                     Navigator.push(
                       context,
@@ -192,13 +193,13 @@ class HomeScreenState extends State<HomeScreen> {
   String _getKeywordFromGenre(String genre) {
     // Map genre names to effective keywords based on API testing
     final keywordMap = {
-      'Music': 'music',           // 66,202 events
-      'Sports': 'sports',         // 18,570 events  
+      'Music': 'music', // 66,202 events
+      'Sports': 'sports', // 18,570 events
       'Arts & Theatre': 'theatre', // 93,738 events
-      'Film': 'film',             // 756 events
+      'Film': 'film', // 756 events
       'Miscellaneous': 'concert', // Use 'concert' for miscellaneous as fallback
     };
-    
+
     return keywordMap[genre] ?? genre.toLowerCase();
   }
 }

@@ -75,7 +75,7 @@ class SearchController extends ChangeNotifier {
 
   Future<void> _search() async {
     if (_disposed || !hasMore) return;
-    
+
     // If query is empty and no filters applied, show default events
     if (queryController.text.isEmpty && _isFiltersEmpty()) {
       await _loadDefaultEvents();
@@ -116,9 +116,7 @@ class SearchController extends ChangeNotifier {
   }
 
   bool _isFiltersEmpty() {
-    return filters.dateRange == null && 
-           filters.genres.isEmpty && 
-           filters.radius == null;
+    return filters.dateRange == null && filters.genres.isEmpty && filters.radius == null;
   }
 
   Future<void> refresh() async {
@@ -127,7 +125,7 @@ class SearchController extends ChangeNotifier {
     _rawResults.clear();
     results.clear();
     hasMore = true;
-    
+
     if (queryController.text.isEmpty && _isFiltersEmpty()) {
       await _loadDefaultEvents();
     } else {
@@ -196,7 +194,10 @@ class _SearchView extends StatelessWidget {
           child: CustomScrollView(
             slivers: [
               // Show default state message when no search query
-              if (ctrl.queryController.text.isEmpty && ctrl._isFiltersEmpty() && !ctrl.isLoading && ctrl.results.isNotEmpty)
+              if (ctrl.queryController.text.isEmpty &&
+                  ctrl._isFiltersEmpty() &&
+                  !ctrl.isLoading &&
+                  ctrl.results.isNotEmpty)
                 SliverToBoxAdapter(
                   child: Container(
                     margin: const EdgeInsets.all(16),
@@ -222,33 +223,42 @@ class _SearchView extends StatelessWidget {
                     ),
                   ),
                 ),
-              
+
               SliverList(
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  if (index < ctrl.results.length) {
-                    final group = ctrl.results[index];
-                    final event = group.schedules.first;
-                    return EventCard(
-                      event: event,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => EventDetailScreen(
-                              event: event,
-                              eventGroup: group.schedules.length > 1 ? group : null,
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    if (index < ctrl.results.length) {
+                      final group = ctrl.results[index];
+                      final event = group.schedules.first;
+                      return EventCard(
+                        event: event,
+                        heroTagSuffix: 'search', // Add unique suffix for search screen
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (_) => EventDetailScreen(
+                                    event: event,
+                                    eventGroup: group.schedules.length > 1 ? group : null,
+                                  ),
                             ),
-                          ),
-                        );
-                      },
-                    );
-                  }
-                  // loader at bottom
-                  return ctrl.isLoading ? const SkeletonEventCard() : const SizedBox.shrink();
-                }, childCount: ctrl.results.length + (ctrl.hasMore && ctrl.queryController.text.isNotEmpty ? 1 : 0)),
+                          );
+                        },
+                      );
+                    }
+                    // loader at bottom
+                    return ctrl.isLoading ? const SkeletonEventCard() : const SizedBox.shrink();
+                  },
+                  childCount:
+                      ctrl.results.length +
+                      (ctrl.hasMore && ctrl.queryController.text.isNotEmpty ? 1 : 0),
+                ),
               ),
-              
-              if (!ctrl.isLoading && ctrl.results.isEmpty && (ctrl.queryController.text.isNotEmpty || !ctrl._isFiltersEmpty()))
+
+              if (!ctrl.isLoading &&
+                  ctrl.results.isEmpty &&
+                  (ctrl.queryController.text.isNotEmpty || !ctrl._isFiltersEmpty()))
                 SliverFillRemaining(
                   child: Center(
                     child: Column(
@@ -268,7 +278,7 @@ class _SearchView extends StatelessWidget {
                     ),
                   ),
                 ),
-              
+
               if (ctrl.hasError)
                 SliverFillRemaining(
                   child: Center(
@@ -324,9 +334,7 @@ class _FilterSheetState extends State<_FilterSheet> {
   late DateTimeRange? _dateRange;
   late List<String> _genres;
   int? _radius;
-  final _allGenres = [
-    'Music', 'Sports', 'Arts & Theatre', 'Film', 'Miscellaneous'
-  ];
+  final _allGenres = ['Music', 'Sports', 'Arts & Theatre', 'Film', 'Miscellaneous'];
   final _radiusOptions = [null, 10, 25, 50, 100];
 
   @override
@@ -340,7 +348,7 @@ class _FilterSheetState extends State<_FilterSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return SafeArea(
       child: Column(
         children: [
@@ -354,15 +362,10 @@ class _FilterSheetState extends State<_FilterSheet> {
               children: [
                 Text(
                   S.of(context).filters,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
               ],
             ),
           ),
@@ -381,9 +384,11 @@ class _FilterSheetState extends State<_FilterSheet> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.calendar_today, 
-                                   size: 20, 
-                                   color: theme.colorScheme.primary),
+                              Icon(
+                                Icons.calendar_today,
+                                size: 20,
+                                color: theme.colorScheme.primary,
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 S.of(context).dateRange,
@@ -431,7 +436,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Genre Filter
                   Card(
                     child: Padding(
@@ -441,9 +446,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.category, 
-                                   size: 20, 
-                                   color: theme.colorScheme.primary),
+                              Icon(Icons.category, size: 20, color: theme.colorScheme.primary),
                               const SizedBox(width: 8),
                               Text(
                                 S.of(context).genres,
@@ -457,23 +460,25 @@ class _FilterSheetState extends State<_FilterSheet> {
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
-                            children: _allGenres.map((g) {
-                              final sel = _genres.contains(g);
-                              return FilterChip(
-                                label: Text(g),
-                                selected: sel,
-                                onSelected: (_) => setState(() => 
-                                  sel ? _genres.remove(g) : _genres.add(g)
-                                ),
-                              );
-                            }).toList(),
+                            children:
+                                _allGenres.map((g) {
+                                  final sel = _genres.contains(g);
+                                  return FilterChip(
+                                    label: Text(g),
+                                    selected: sel,
+                                    onSelected:
+                                        (_) => setState(
+                                          () => sel ? _genres.remove(g) : _genres.add(g),
+                                        ),
+                                  );
+                                }).toList(),
                           ),
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Radius Filter
                   Card(
                     child: Padding(
@@ -483,9 +488,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.location_on, 
-                                   size: 20, 
-                                   color: theme.colorScheme.primary),
+                              Icon(Icons.location_on, size: 20, color: theme.colorScheme.primary),
                               const SizedBox(width: 8),
                               Text(
                                 S.of(context).radius,
@@ -500,17 +503,16 @@ class _FilterSheetState extends State<_FilterSheet> {
                             width: double.infinity,
                             child: DropdownButtonFormField<int?>(
                               value: _radius,
-                              decoration: const InputDecoration(
-                                border: OutlineInputBorder(),
-                              ),
-                              items: _radiusOptions
-                                  .map(
-                                    (r) => DropdownMenuItem(
-                                      value: r,
-                                      child: Text(r == null ? S.of(context).any : '$r km'),
-                                    ),
-                                  )
-                                  .toList(),
+                              decoration: const InputDecoration(border: OutlineInputBorder()),
+                              items:
+                                  _radiusOptions
+                                      .map(
+                                        (r) => DropdownMenuItem(
+                                          value: r,
+                                          child: Text(r == null ? S.of(context).any : '$r km'),
+                                        ),
+                                      )
+                                      .toList(),
                               onChanged: (v) => setState(() => _radius = v),
                             ),
                           ),
@@ -549,11 +551,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                     onPressed: () {
                       Navigator.pop(
                         context,
-                        SearchFilters(
-                          dateRange: _dateRange,
-                          genres: _genres,
-                          radius: _radius,
-                        ),
+                        SearchFilters(dateRange: _dateRange, genres: _genres, radius: _radius),
                       );
                     },
                     child: Text(S.of(context).apply),

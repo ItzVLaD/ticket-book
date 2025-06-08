@@ -184,7 +184,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 fit: StackFit.expand,
                 children: [
                   Hero(
-                    tag: 'event_${event.id}',
+                    tag: 'event_${event.id}_detail', // Use unique tag for detail screen
                     child:
                         event.imageUrl != null
                             ? Image.network(
@@ -722,31 +722,35 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                           borderRadius: const BorderRadius.vertical(
                                             top: Radius.circular(16),
                                           ),
-                                          child:
-                                              e.imageUrl != null
-                                                  ? Image.network(
-                                                    e.imageUrl!,
-                                                    height: 100,
-                                                    width: double.infinity,
-                                                    fit: BoxFit.cover,
-                                                    errorBuilder:
-                                                        (context, error, stackTrace) => Container(
-                                                          height: 100,
-                                                          color: colorScheme.surfaceVariant,
-                                                          child: Icon(
-                                                            Icons.event,
-                                                            color: colorScheme.onSurfaceVariant,
+                                          child: Hero(
+                                            tag:
+                                                'event_${e.id}_similar', // Add unique tag for similar events
+                                            child:
+                                                e.imageUrl != null
+                                                    ? Image.network(
+                                                      e.imageUrl!,
+                                                      height: 100,
+                                                      width: double.infinity,
+                                                      fit: BoxFit.cover,
+                                                      errorBuilder:
+                                                          (context, error, stackTrace) => Container(
+                                                            height: 100,
+                                                            color: colorScheme.surfaceVariant,
+                                                            child: Icon(
+                                                              Icons.event,
+                                                              color: colorScheme.onSurfaceVariant,
+                                                            ),
                                                           ),
-                                                        ),
-                                                  )
-                                                  : Container(
-                                                    height: 100,
-                                                    color: colorScheme.surfaceVariant,
-                                                    child: Icon(
-                                                      Icons.event,
-                                                      color: colorScheme.onSurfaceVariant,
+                                                    )
+                                                    : Container(
+                                                      height: 100,
+                                                      color: colorScheme.surfaceVariant,
+                                                      child: Icon(
+                                                        Icons.event,
+                                                        color: colorScheme.onSurfaceVariant,
+                                                      ),
                                                     ),
-                                                  ),
+                                          ),
                                         ),
                                         Padding(
                                           padding: const EdgeInsets.all(12),

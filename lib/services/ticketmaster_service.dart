@@ -20,7 +20,7 @@ class TicketmasterService {
     try {
       // Always filter for current events (from today onwards)
       final today = DateTime.now().toIso8601String().split('T')[0];
-      
+
       final uri = Uri.parse('$baseUrl/events.json').replace(
         queryParameters: {
           'apikey': apiKey,

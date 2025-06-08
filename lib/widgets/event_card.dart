@@ -4,13 +4,18 @@ import 'package:tickets_booking/models/event.dart';
 class EventCard extends StatelessWidget {
   final Event event;
   final VoidCallback onTap;
+  final String? heroTagSuffix; // Add suffix to make hero tags unique
 
-  const EventCard({super.key, required this.event, required this.onTap});
+  const EventCard({super.key, required this.event, required this.onTap, this.heroTagSuffix});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+
+    // Create unique hero tag based on context
+    final heroTag =
+        heroTagSuffix != null ? 'event_${event.id}_$heroTagSuffix' : 'event_${event.id}';
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -39,7 +44,7 @@ class EventCard extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
                   child: Hero(
-                    tag: 'event_${event.id}',
+                    tag: heroTag, // Use unique hero tag
                     child: Container(
                       width: 80,
                       height: 80,

@@ -38,7 +38,7 @@ class MyApp extends StatelessWidget {
 
   ThemeData _buildLightTheme() {
     const seedColor = Color(0xFF6750A4); // Modern purple
-    final colorScheme = ColorScheme.fromSeed(seedColor: seedColor, brightness: Brightness.light);
+    final colorScheme = ColorScheme.fromSeed(seedColor: seedColor);
 
     return ThemeData(
       useMaterial3: true,
@@ -58,7 +58,7 @@ class MyApp extends StatelessWidget {
       ),
 
       // Card Theme
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         color: colorScheme.surface,
@@ -95,7 +95,7 @@ class MyApp extends StatelessWidget {
       // Input Decoration Theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colorScheme.surfaceVariant.withOpacity(0.5),
+        fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
@@ -124,7 +124,7 @@ class MyApp extends StatelessWidget {
 
       // Chip Theme
       chipTheme: ChipThemeData(
-        backgroundColor: colorScheme.surfaceVariant,
+        backgroundColor: colorScheme.surfaceContainerHighest,
         selectedColor: colorScheme.primaryContainer,
         labelStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -164,7 +164,7 @@ class MyApp extends StatelessWidget {
         ),
       ),
 
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         color: colorScheme.surface,
@@ -199,7 +199,7 @@ class MyApp extends StatelessWidget {
 
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colorScheme.surfaceVariant.withOpacity(0.5),
+        fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
@@ -226,7 +226,7 @@ class MyApp extends StatelessWidget {
       ),
 
       chipTheme: ChipThemeData(
-        backgroundColor: colorScheme.surfaceVariant,
+        backgroundColor: colorScheme.surfaceContainerHighest,
         selectedColor: colorScheme.primaryContainer,
         labelStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -265,8 +265,8 @@ class AuthWrapper extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                colorScheme.primaryContainer.withOpacity(0.3),
-                colorScheme.secondaryContainer.withOpacity(0.3),
+                colorScheme.primaryContainer.withValues(alpha: 0.3),
+                colorScheme.secondaryContainer.withValues(alpha: 0.3),
               ],
             ),
           ),
@@ -285,7 +285,7 @@ class AuthWrapper extends StatelessWidget {
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
                         BoxShadow(
-                          color: colorScheme.primary.withOpacity(0.3),
+                          color: colorScheme.primary.withValues(alpha: 0.3),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),

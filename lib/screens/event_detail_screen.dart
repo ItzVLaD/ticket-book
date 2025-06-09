@@ -138,14 +138,41 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   Future<void> _launchEventURL(String url) async {
     try {
       final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      
+      // Debug logging
+      debugPrint('Attempting to launch URL: $url');
+      
+      // Check if URL can be launched
+      final canLaunch = await canLaunchUrl(uri);
+      debugPrint('Can launch URL: $canLaunch');
+      
+      if (canLaunch) {
+        final launched = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+        debugPrint('URL launch result: $launched');
+        
+        if (!launched) {
+          // Try platform default mode as fallback
+          debugPrint('Trying platform default mode...');
+          final fallbackLaunched = await launchUrl(
+            uri,
+            mode: LaunchMode.platformDefault,
+          );
+          debugPrint('Fallback launch result: $fallbackLaunched');
+          
+          if (!fallbackLaunched && mounted) {
+            _showErrorDialog('Could not open the event page. Please check your internet connection.');
+          }
+        }
       } else {
         if (mounted) {
-          _showErrorDialog('Could not open the event page. Please check your internet connection.');
+          _showErrorDialog('No application found to handle this URL. Please install a web browser.');
         }
       }
     } catch (e) {
+      debugPrint('Error launching URL: $e');
       if (mounted) {
         _showErrorDialog('Error opening event page: ${e.toString()}');
       }
@@ -165,8 +192,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       final lng = _selectedEvent.longitude!;
       final label = Uri.encodeComponent(_selectedEvent.venue ?? _selectedEvent.name);
 
+      debugPrint('Attempting to launch map for coordinates: $lat, $lng');
+
       // Try different map providers in order of preference
       final mapUrls = [
+        'geo:$lat,$lng?q=$lat,$lng($label)', // Android native geo intent
         'https://www.google.com/maps/search/?api=1&query=$lat,$lng&query_place_id=$label',
         'https://maps.apple.com/?q=$lat,$lng&ll=$lat,$lng',
         'https://www.openstreetmap.org/?mlat=$lat&mlon=$lng&zoom=15',
@@ -175,13 +205,26 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       bool launched = false;
       for (final mapUrl in mapUrls) {
         try {
+          debugPrint('Trying to launch map URL: $mapUrl');
           final uri = Uri.parse(mapUrl);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-            launched = true;
-            break;
+          
+          final canLaunch = await canLaunchUrl(uri);
+          debugPrint('Can launch map URL: $canLaunch');
+          
+          if (canLaunch) {
+            final launchResult = await launchUrl(
+              uri,
+              mode: LaunchMode.externalApplication,
+            );
+            debugPrint('Map launch result: $launchResult');
+            
+            if (launchResult) {
+              launched = true;
+              break;
+            }
           }
         } catch (e) {
+          debugPrint('Error launching map URL $mapUrl: $e');
           continue; // Try next map provider
         }
       }

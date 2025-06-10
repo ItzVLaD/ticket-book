@@ -125,17 +125,61 @@ class EventCard extends StatelessWidget {
                         const SizedBox(height: 4),
                       ],
 
-                      // Venue
-                      if (event.venue != null) ...[
+                      // Venue and City
+                      if (event.venue != null || event.city != null) ...[
                         Row(
                           children: [
                             Icon(Icons.location_on, size: 14, color: colorScheme.secondary),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
-                                event.venue!,
+                                [event.venue, event.city].where((s) => s != null && s.isNotEmpty).join(', '),
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+
+                      // Price Range
+                      if (event.priceRanges != null && event.priceRanges!.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            Icon(Icons.attach_money, size: 14, color: colorScheme.tertiary),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                _formatPriceRange(event.priceRanges!.first),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+
+                      // Genre
+                      if (event.genre != null && event.genre!.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            Icon(Icons.music_note, size: 14, color: colorScheme.primary),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                event.genre!,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.primary,
                                   fontWeight: FontWeight.w500,
                                 ),
                                 maxLines: 1,
@@ -165,5 +209,16 @@ class EventCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatPriceRange(PriceRange priceRange) {
+    if (priceRange.min != null && priceRange.max != null) {
+      return '${priceRange.currency} ${priceRange.min!.toStringAsFixed(0)} - ${priceRange.max!.toStringAsFixed(0)}';
+    } else if (priceRange.min != null) {
+      return 'From ${priceRange.currency} ${priceRange.min!.toStringAsFixed(0)}';
+    } else if (priceRange.max != null) {
+      return 'Up to ${priceRange.currency} ${priceRange.max!.toStringAsFixed(0)}';
+    }
+    return 'Price available';
   }
 }

@@ -9,8 +9,11 @@ import '../providers/auth_provider.dart';
 import '../providers/event_provider.dart';
 import '../providers/wishlist_provider.dart';
 import '../services/booking_service.dart';
+import '../services/payment_service.dart';
+import '../services/pricing_service.dart';
 import '../widgets/quantity_picker.dart';
 import '../widgets/event_detail_price_widget.dart';
+import 'liqpay_payment_screen.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final Event event;
@@ -669,8 +672,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Price banner (updated to use _selectedEvent)
-                    EventDetailPriceWidget(event: _selectedEvent),
+                    // Price banner (shows base price per ticket)
+                    EventDetailPriceWidget(
+                      event: _selectedEvent,
+                      // Don't pass quantity here to show base price per ticket
+                    ),
                     const SizedBox(height: 24),
 
                     // Live availability display (updated to use _selectedEvent)
@@ -1083,7 +1089,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ctaLabel = 'Select tickets';
                   ctaEnabled = false;
                 } else {
-                  ctaLabel = 'Book tickets';
+                  ctaLabel = 'Pay & Book tickets';
                   ctaEnabled = true;
                 }
               } else {
@@ -1094,7 +1100,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ctaLabel = 'Cancel booking';
                   ctaEnabled = true;
                 } else {
-                  ctaLabel = 'Update booking';
+                  ctaLabel = 'Pay & Update booking';
                   ctaEnabled = true;
                 }
               }
@@ -1113,60 +1119,143 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ],
                 ),
                 child: SafeArea(
-                  child: Row(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: colorScheme.surfaceVariant,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: QuantityPicker(
-                          quantity: _localQuantity!,
-                          minQuantity: hasExistingBooking ? 0 : 1,
-                          maxQuantity: maxQuantity,
-                          onDecrement:
-                              !_isBookingInProgress &&
-                                      _localQuantity! > (hasExistingBooking ? 0 : 1)
-                                  ? () => setState(() => _localQuantity = _localQuantity! - 1)
-                                  : null,
-                          onIncrement:
-                              _localQuantity! < maxQuantity &&
-                                      ticketsLeft > 0 &&
-                                      !_isBookingInProgress
-                                  ? () => setState(() => _localQuantity = _localQuantity! + 1)
-                                  : null,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: FilledButton(
-                          onPressed:
-                              ctaEnabled && !_isBookingInProgress
-                                  ? () => _handleBookingAction()
-                                  : null,
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          ),
-                          child:
-                              _isBookingInProgress
-                                  ? SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: colorScheme.onPrimary,
-                                    ),
-                                  )
-                                  : Text(
-                                    ctaLabel,
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      color: colorScheme.onPrimary,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                      // Payment info row - only show for new bookings or updates requiring payment
+                      if (_localQuantity! > 0 && (_localQuantity != oldQty || !hasExistingBooking)) ...[
+                        FutureBuilder<EventPrice>(
+                          future: context.read<EventsProvider>().getEventPrice(_selectedEvent),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData) {
+                              final eventPrice = snapshot.data!;
+                              final paymentService = PaymentService();
+                              final totalAmount = paymentService.getAmountInUSD(
+                                eventPrice.price * _localQuantity!, 
+                                eventPrice.currency
+                              );
+                              
+                              return Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                margin: const EdgeInsets.only(bottom: 12),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.primaryContainer.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: colorScheme.primary.withOpacity(0.3),
                                   ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Total Payment',
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            color: colorScheme.onSurface.withOpacity(0.7),
+                                          ),
+                                        ),
+                                        Text(
+                                          '\$${totalAmount.toStringAsFixed(2)} USD',
+                                          style: theme.textTheme.titleMedium?.copyWith(
+                                            color: colorScheme.primary,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        if (_localQuantity! > 1) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '${_localQuantity}x ${eventPrice.formattedPrice}',
+                                            style: theme.textTheme.bodySmall?.copyWith(
+                                              color: colorScheme.onSurface.withOpacity(0.6),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: colorScheme.primary.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        'Secure Payment',
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: colorScheme.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
                         ),
+                      ],
+                      
+                      // Quantity picker and book button row
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: colorScheme.surfaceVariant,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: QuantityPicker(
+                              quantity: _localQuantity!,
+                              minQuantity: hasExistingBooking ? 0 : 1,
+                              maxQuantity: maxQuantity,
+                              onDecrement:
+                                  !_isBookingInProgress &&
+                                          _localQuantity! > (hasExistingBooking ? 0 : 1)
+                                      ? () => setState(() => _localQuantity = _localQuantity! - 1)
+                                      : null,
+                              onIncrement:
+                                  _localQuantity! < maxQuantity &&
+                                          ticketsLeft > 0 &&
+                                          !_isBookingInProgress
+                                      ? () => setState(() => _localQuantity = _localQuantity! + 1)
+                                      : null,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed:
+                                  ctaEnabled && !_isBookingInProgress
+                                      ? () => _handleBookingAction()
+                                      : null,
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              ),
+                              child:
+                                  _isBookingInProgress
+                                      ? SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: colorScheme.onPrimary,
+                                        ),
+                                      )
+                                      : Text(
+                                        ctaLabel,
+                                        style: theme.textTheme.titleMedium?.copyWith(
+                                          color: colorScheme.onPrimary,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -1182,28 +1271,27 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     try {
       final user = context.read<AuthProvider>().user!;
 
-      // Use updateBooking method with the selected event for grouped events
-      await _bookingService.updateBooking(
-        user: user,
-        event: _selectedEvent,
-        newQty: _localQuantity!,
-      );
-
-      if (mounted) {
-        String message;
-        if (_localQuantity == 0) {
-          message = 'Booking cancelled successfully';
-        } else {
-          message = 'Tickets booked successfully';
-        }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            behavior: SnackBarBehavior.floating,
-          ),
+      // Check if this is a cancellation (quantity = 0)
+      if (_localQuantity == 0) {
+        // Cancel booking directly without payment
+        await _bookingService.updateBooking(
+          user: user,
+          event: _selectedEvent,
+          newQty: 0,
         );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Booking cancelled successfully'),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } else {
+        // New booking or update - requires payment
+        await _initiatePayment();
       }
     } catch (e) {
       if (mounted) {
@@ -1218,6 +1306,88 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     } finally {
       if (mounted) {
         setState(() => _isBookingInProgress = false);
+      }
+    }
+  }
+
+  Future<void> _initiatePayment() async {
+    try {
+      // Get event price for payment
+      final eventsProvider = context.read<EventsProvider>();
+      final eventPrice = await eventsProvider.getEventPrice(_selectedEvent);
+
+      if (!mounted) return;
+
+      // Navigate to LiqPay payment screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LiqPayPaymentScreen(
+            event: _selectedEvent,
+            eventPrice: eventPrice,
+            ticketsCount: _localQuantity!,
+            onPaymentResult: _handlePaymentResult,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to initialize payment: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handlePaymentResult(bool success, String? orderId) async {
+    if (!mounted) return;
+
+    if (success) {
+      try {
+        final user = context.read<AuthProvider>().user!;
+        
+        // Update booking after successful payment
+        await _bookingService.updateBooking(
+          user: user,
+          event: _selectedEvent,
+          newQty: _localQuantity!,
+        );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Payment successful! ${_localQuantity} tickets booked.'),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Payment successful but booking failed: $e'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Payment cancelled or failed'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }

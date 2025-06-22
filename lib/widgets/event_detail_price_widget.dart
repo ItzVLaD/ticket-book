@@ -8,11 +8,13 @@ import '../services/pricing_service.dart';
 class EventDetailPriceWidget extends StatelessWidget {
   final Event event;
   final bool isCompact;
+  final int? quantity; // Add quantity parameter for total price calculation
 
   const EventDetailPriceWidget({
     super.key,
     required this.event,
     this.isCompact = false,
+    this.quantity, // Optional quantity for total price display
   });
 
   @override
@@ -35,7 +37,7 @@ class EventDetailPriceWidget extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: colorScheme.onSurfaceVariant,
+                    color: colorScheme.onSecondary,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Center(
@@ -76,17 +78,40 @@ class EventDetailPriceWidget extends StatelessWidget {
         }
 
         final eventPrice = snapshot.data!;
+        
+        // Calculate display price and text based on quantity
+        String displayPriceText;
+        String? quantityInfo;
+        
+        if (quantity != null && quantity! > 1) {
+          final totalPrice = eventPrice.price * quantity!;
+          displayPriceText = '${totalPrice.toStringAsFixed(2)} ${eventPrice.currency}';
+          quantityInfo = '${quantity}x ${eventPrice.formattedPrice}';
+        } else {
+          displayPriceText = eventPrice.formattedPrice;
+          quantityInfo = null;
+        }
 
         if (isCompact) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                eventPrice.formattedPrice,
+                displayPriceText,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
+              if (quantityInfo != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  quantityInfo,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+                    fontSize: 10,
+                  ),
+                ),
+              ],
               if (eventPrice.isGenerated) ...[
                 const SizedBox(height: 2),
                 Row(
@@ -142,12 +167,23 @@ class EventDetailPriceWidget extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                eventPrice.formattedPrice,
+                displayPriceText,
                 style: theme.textTheme.headlineSmall?.copyWith(
                   color: eventPrice.isGenerated ? colorScheme.onSecondary : colorScheme.onPrimary,
                   fontWeight: FontWeight.bold,
                 ),
+                textAlign: TextAlign.center,
               ),
+              if (quantityInfo != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  quantityInfo,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: (eventPrice.isGenerated ? colorScheme.onSecondary : colorScheme.onPrimary).withOpacity(0.8),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
               if (eventPrice.isGenerated) ...[
                 const SizedBox(height: 4),
                 Text(

@@ -148,10 +148,6 @@ class EventCard extends StatelessWidget {
                         const SizedBox(height: 4),
                       ],
 
-                      // Price
-                      EventPriceWidget(event: event),
-                      const SizedBox(height: 4),
-
                       // Genre
                       if (event.genre != null && event.genre!.isNotEmpty) ...[
                         Row(

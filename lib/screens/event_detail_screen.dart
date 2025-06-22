@@ -10,6 +10,7 @@ import '../providers/event_provider.dart';
 import '../providers/wishlist_provider.dart';
 import '../services/booking_service.dart';
 import '../widgets/quantity_picker.dart';
+import '../widgets/event_detail_price_widget.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final Event event;
@@ -87,6 +88,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   value: event.id,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
                         displayText,
@@ -97,22 +99,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (event.priceRanges?.isNotEmpty == true) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          () {
-                            final p = event.priceRanges!.first;
-                            if (p.min != null && p.max != null && p.min != p.max) {
-                              return '${p.min} – ${p.max} ${p.currency}';
-                            }
-                            final single = p.min ?? p.max;
-                            return '$single ${p.currency}';
-                          }(),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 );
@@ -684,48 +670,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     const SizedBox(height: 24),
 
                     // Price banner (updated to use _selectedEvent)
-                    if (_selectedEvent.priceRanges?.isNotEmpty == true) ...[
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [colorScheme.primary, colorScheme.primary.withOpacity(0.8)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: colorScheme.primary.withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(Icons.confirmation_number, color: colorScheme.onPrimary, size: 32),
-                            const SizedBox(height: 8),
-                            Text(
-                              () {
-                                final p = _selectedEvent.priceRanges!.first;
-                                if (p.min != null && p.max != null && p.min != p.max) {
-                                  return '${p.min} – ${p.max} ${p.currency}';
-                                }
-                                final single = p.min ?? p.max;
-                                return '$single ${p.currency}';
-                              }(),
-                              style: theme.textTheme.headlineSmall?.copyWith(
-                                color: colorScheme.onPrimary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
+                    EventDetailPriceWidget(event: _selectedEvent),
+                    const SizedBox(height: 24),
 
                     // Live availability display (updated to use _selectedEvent)
                     StreamBuilder<QuerySnapshot>(

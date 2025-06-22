@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tickets_booking/models/event.dart';
+import 'event_price_widget.dart';
 
 class EventCard extends StatelessWidget {
   final Event event;
@@ -147,27 +148,9 @@ class EventCard extends StatelessWidget {
                         const SizedBox(height: 4),
                       ],
 
-                      // Price Range
-                      if (event.priceRanges != null && event.priceRanges!.isNotEmpty) ...[
-                        Row(
-                          children: [
-                            Icon(Icons.attach_money, size: 14, color: colorScheme.tertiary),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                _formatPriceRange(event.priceRanges!.first),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                      ],
+                      // Price
+                      EventPriceWidget(event: event),
+                      const SizedBox(height: 4),
 
                       // Genre
                       if (event.genre != null && event.genre!.isNotEmpty) ...[
@@ -209,16 +192,5 @@ class EventCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _formatPriceRange(PriceRange priceRange) {
-    if (priceRange.min != null && priceRange.max != null) {
-      return '${priceRange.currency} ${priceRange.min!.toStringAsFixed(0)} - ${priceRange.max!.toStringAsFixed(0)}';
-    } else if (priceRange.min != null) {
-      return 'From ${priceRange.currency} ${priceRange.min!.toStringAsFixed(0)}';
-    } else if (priceRange.max != null) {
-      return 'Up to ${priceRange.currency} ${priceRange.max!.toStringAsFixed(0)}';
-    }
-    return 'Price available';
   }
 }

@@ -181,4 +181,27 @@ class Event {
 
   /// Check if the event is current (not expired)
   bool get isCurrent => !isExpired;
+
+  /// Check if this event has pricing information from the API
+  bool get hasApiPricing {
+    // Check priceRanges first
+    if (priceRanges?.isNotEmpty == true) {
+      final priceRange = priceRanges!.first;
+      if (priceRange.min != null || priceRange.max != null) {
+        return true;
+      }
+    }
+    // Check individual price fields
+    return minPrice != null || maxPrice != null;
+  }
+
+  /// Get the primary currency for this event (for generating prices if needed)
+  String get effectiveCurrency {
+    // Try priceRanges first
+    if (priceRanges?.isNotEmpty == true) {
+      return priceRanges!.first.currency;
+    }
+    // Fall back to currency field or USD
+    return currency ?? 'USD';
+  }
 }

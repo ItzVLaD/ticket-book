@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:tickets_booking/models/event.dart';
 import 'package:tickets_booking/models/event_group.dart';
 import '../services/ticketmaster_service.dart';
+import '../services/pricing_service.dart';
 
 class EventsProvider extends ChangeNotifier {
   final TicketmasterService _service = TicketmasterService();
+  final PricingService _pricingService = PricingService();
 
   List<Event> _events = [];
   List<EventGroup> _groups = [];
@@ -82,5 +84,26 @@ class EventsProvider extends ChangeNotifier {
     _hasError = false;
     _errorMessage = '';
     notifyListeners();
+  }
+
+  /// Get pricing for a specific event
+  Future<EventPrice> getEventPrice(Event event) async {
+    // Find if this event belongs to any group
+    EventGroup? parentGroup;
+    try {
+      parentGroup = _groups.firstWhere(
+        (group) => group.schedules.any((e) => e.id == event.id),
+      );
+    } catch (e) {
+      // Event not found in any group, treat as single event
+      parentGroup = null;
+    }
+
+    return await _pricingService.getEventPrice(event, eventGroup: parentGroup);
+  }
+
+  /// Get pricing for multiple events (batch operation for better performance)
+  Future<Map<String, EventPrice>> getEventPrices(List<Event> events) async {
+    return await _pricingService.getEventPrices(events, eventGroups: _groups);
   }
 }

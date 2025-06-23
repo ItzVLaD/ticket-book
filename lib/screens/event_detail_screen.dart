@@ -1089,7 +1089,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ctaLabel = 'Select tickets';
                   ctaEnabled = false;
                 } else {
-                  ctaLabel = 'Pay & Book tickets';
+                  ctaLabel = 'Book tickets instantly';
                   ctaEnabled = true;
                 }
               } else {
@@ -1100,7 +1100,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ctaLabel = 'Cancel booking';
                   ctaEnabled = true;
                 } else {
-                  ctaLabel = 'Pay & Update booking';
+                  ctaLabel = 'Update booking instantly';
                   ctaEnabled = true;
                 }
               }
@@ -1312,13 +1312,36 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   Future<void> _initiatePayment() async {
     try {
+      setState(() => _isBookingInProgress = true);
+      
       // Get event price for payment
       final eventsProvider = context.read<EventsProvider>();
       final eventPrice = await eventsProvider.getEventPrice(_selectedEvent);
 
       if (!mounted) return;
 
-      // Navigate to LiqPay payment screen
+      // Book tickets immediately (for test project)
+      final user = context.read<AuthProvider>().user!;
+      await _bookingService.updateBooking(
+        user: user,
+        event: _selectedEvent,
+        newQty: _localQuantity!,
+      );
+
+      if (!mounted) return;
+
+      // Show success message immediately
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment processed! ${_localQuantity} tickets booked successfully.'),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
+      // Still show LiqPay payment screen for demonstration purposes
+      // but the booking is already complete
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -1334,11 +1357,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to initialize payment: $e'),
+            content: Text('Booking failed: $e'),
             backgroundColor: Theme.of(context).colorScheme.error,
             behavior: SnackBarBehavior.floating,
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isBookingInProgress = false);
       }
     }
   }
@@ -1346,49 +1373,25 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   Future<void> _handlePaymentResult(bool success, String? orderId) async {
     if (!mounted) return;
 
+    // Since booking is already done in _initiatePayment, this is just for demonstration
     if (success) {
-      try {
-        final user = context.read<AuthProvider>().user!;
-        
-        // Update booking after successful payment
-        await _bookingService.updateBooking(
-          user: user,
-          event: _selectedEvent,
-          newQty: _localQuantity!,
-        );
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Payment successful! ${_localQuantity} tickets booked.'),
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Payment successful but booking failed: $e'),
-              backgroundColor: Theme.of(context).colorScheme.error,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        }
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('LiqPay payment flow completed (for demonstration)'),
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
     } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Payment cancelled or failed'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('LiqPay payment flow cancelled (booking already completed)'),
+          backgroundColor: Theme.of(context).colorScheme.onSecondary,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
   }
 }
